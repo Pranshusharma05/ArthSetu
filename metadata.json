@@ -1,0 +1,6 @@
+{
+  "name": "ArthSetu",
+  "description": "An intelligent financial navigation platform for SC beneficiaries and aspiring entrepreneurs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
