@@ -37,7 +37,7 @@ namespace ArthSetuBackend.Controllers
         [HttpGet("loans")]
         public async Task<IActionResult> GetLoanSchemes()
         {
-            var schemes = await _context.Schemes
+            var schemes = await _context.Schemes.Where(s => s.VerificationStatus == "VERIFIED" && s.DataOrigin == "OFFICIAL" && !s.Name.Contains("General Scheme") && !s.Name.Contains("Discovered Scheme"))
                 .Include(s => s.Source)
                 .Where(s => s.IsActive && s.VerificationStatus == "Verified" && (s.LifecycleStatus == null || s.LifecycleStatus != "SUPERSEDED") && s.DataOrigin != "LEGACY_REFERENCE")
                 .ToListAsync();

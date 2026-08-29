@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using ArthSetuBackend.Data;
 using ArthSetuBackend.Models;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 
 namespace ArthSetuBackend.Controllers
 {
@@ -15,21 +13,6 @@ namespace ArthSetuBackend.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        private static readonly string[] ExcludedOrigins =
-        {
-            "DEMO", "MOCK", "DEVELOPMENT_SEED", "LEGACY_REFERENCE", "DISCOVERY_CATEGORY",
-            "NEEDS_REVIEW", "SUPERSEDED", "GENERIC_PLACEHOLDER"
-        };
-
-        private static readonly string[] OutputOnlyRuleFields =
-        {
-            "InterestRate", "MaximumLoan", "Tenure", "Moratorium", "BenefitAmount", "SubsidyAmount"
-        };
-
-        private static readonly Regex SyntheticNamePattern = new(
-            @"^(general\s+scheme|scheme\s+[a-z]?\s*\d+|test\s+scheme|demo\s+scheme|sample\s+scheme|mock\s+scheme|seed\s+scheme|generated\s+scheme|placeholder)|\b(discovered\s+scheme|wave\s+[a-z])\b",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
         public SchemeMatchingController(ApplicationDbContext context)
         {
             _context = context;
@@ -38,29 +21,14 @@ namespace ArthSetuBackend.Controllers
         [HttpGet("stats")]
         public IActionResult GetStats()
         {
-            var schemes = _context.Schemes.AsNoTracking().ToList();
-            var rules = _context.SchemeEligibilityRules.AsNoTracking().ToList();
-            var conflicts = _context.SourceConflicts.AsNoTracking().ToList();
-            var sources = _context.GovernmentSources.AsNoTracking().ToDictionary(s => s.Id, s => s);
-
-            var publishable = schemes.Where(s =>
-            {
-                sources.TryGetValue(s.SourceId ?? string.Empty, out var source);
-                var schemeRules = rules.Where(r => r.SchemeId == s.Id).ToList();
-                var hasCriticalConflict = conflicts.Any(c => c.SchemeId == s.Id && !IsResolvedConflict(c.Status));
-                return IsCitizenPublishable(s, source, schemeRules, hasCriticalConflict);
-            }).ToList();
-
-            return Ok(new
-            {
-                total = schemes.Count,
-                verified = publishable.Count,
-                central = publishable.Count(s => string.Equals(s.GovernmentLevel ?? s.Scope, "Central", StringComparison.OrdinalIgnoreCase)),
-                state = publishable.Count(s => string.Equals(s.GovernmentLevel ?? s.Scope, "State", StringComparison.OrdinalIgnoreCase)),
-                ut = publishable.Count(s => string.Equals(s.GovernmentLevel ?? s.Scope, "UT", StringComparison.OrdinalIgnoreCase)),
-                needsReview = schemes.Count(s => string.Equals(s.VerificationStatus, "NEEDS_REVIEW", StringComparison.OrdinalIgnoreCase) || string.Equals(s.VerificationStatus, "Needs Review", StringComparison.OrdinalIgnoreCase)),
-                demo = schemes.Count(s => string.Equals(s.DataOrigin, "DEMO", StringComparison.OrdinalIgnoreCase) || string.Equals(s.DataOrigin, "MOCK", StringComparison.OrdinalIgnoreCase)),
-                appUrls = publishable.Count(s => !string.IsNullOrWhiteSpace(s.OfficialApplicationUrl)),
+            return Ok(new {
+                total = _context.Schemes.Count(),
+                verified = _context.Schemes.Count(s => s.VerificationStatus == "Verified" || s.VerificationStatus == "VERIFIED"),
+                central = _context.Schemes.Count(s => (s.VerificationStatus == "Verified" || s.VerificationStatus == "VERIFIED") && s.Scope == "Central"),
+                state = _context.Schemes.Count(s => (s.VerificationStatus == "Verified" || s.VerificationStatus == "VERIFIED") && s.Scope != "Central"),
+                needsReview = _context.Schemes.Count(s => s.VerificationStatus == "NEEDS_REVIEW" || s.VerificationStatus == "Needs Review"),
+                demo = _context.Schemes.Count(s => s.DataOrigin == "DEMO" || s.DataOrigin == "MOCK"),
+                appUrls = _context.Schemes.Count(s => !string.IsNullOrEmpty(s.OfficialApplicationUrl)),
                 sources = _context.GovernmentSources.Count()
             });
         }
@@ -68,32 +36,49 @@ namespace ArthSetuBackend.Controllers
         [HttpPost("match")]
         public IActionResult EvaluateEligibility([FromBody] UserProfile profile)
         {
-            var targetPurpose = NormalizePurpose(profile.Purpose);
-
-            var schemes = _context.Schemes
-                .AsNoTracking()
-                .Include(s => s.Source)
-                .Include(s => s.ApplicationWindows)
-                .Where(s => s.IsActive && s.DataOrigin == "OFFICIAL" &&
-                    (s.VerificationStatus == "Verified" || s.VerificationStatus == "VERIFIED"))
-                .ToList();
-
-            var allRules = _context.SchemeEligibilityRules.AsNoTracking().ToList();
-            var unresolvedConflictSchemeIds = _context.SourceConflicts
-                .AsNoTracking()
-                .Where(c => c.Status != "RESOLVED" && c.Status != "Resolved" && c.Status != "CLOSED" && c.Status != "Closed")
-                .Select(c => c.SchemeId)
-                .Distinct()
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            var activeSchemes = schemes.Where(s =>
+            // Map frontend purpose labels to database purpose values
+            var purposeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                var rules = allRules.Where(r => r.SchemeId == s.Id).ToList();
-                if (!IsCitizenPublishable(s, s.Source, rules, unresolvedConflictSchemeIds.Contains(s.Id))) return false;
-                if (!PurposeMatches(s, profile.Purpose, targetPurpose)) return false;
-                if (!GeographyMatches(s, profile.State, profile.District)) return false;
-                return true;
-            }).ToList();
+                { "Business", "Income-Generating Activities" },
+                { "Business & Entrepreneurship", "Income-Generating Activities" },
+                { "Entrepreneurship", "Income-Generating Activities" },
+                { "Income Generating", "Income-Generating Activities" },
+            };
+            var targetPurpose = purposeMap.TryGetValue(profile.Purpose ?? "", out var mappedPurpose)
+                ? mappedPurpose
+                : profile.Purpose;
+            
+            var excludedOrigins = new[] { "DEMO", "MOCK", "DEVELOPMENT_SEED", "LEGACY_REFERENCE", "DISCOVERY_CATEGORY", "NEEDS_REVIEW", "SUPERSEDED", "GENERIC_PLACEHOLDER" };
+
+            // Build purpose category aliases for proper matching
+            var matchCategoryAliases = new List<string>();
+            if (!string.IsNullOrEmpty(profile.Purpose))
+            {
+                var purposeLower = profile.Purpose.ToLower();
+                if (purposeLower.Contains("business") || purposeLower.Contains("entrepreneur") || purposeLower.Contains("income"))
+                    matchCategoryAliases.AddRange(new[] { "Business", "Income-Generating Activities", "Micro Finance", "Term Loan" });
+                else if (purposeLower.Contains("education") || purposeLower.Contains("scholarship"))
+                    matchCategoryAliases.AddRange(new[] { "Education", "Scholarship" });
+                else if (purposeLower.Contains("agriculture") || purposeLower.Contains("farm"))
+                    matchCategoryAliases.AddRange(new[] { "Agriculture" });
+                else if (purposeLower.Contains("startup"))
+                    matchCategoryAliases.AddRange(new[] { "Startup", "Business" });
+                else
+                    matchCategoryAliases.Add(profile.Purpose);
+            }
+            
+            var activeSchemes = _context.Schemes
+                                    .Include(s => s.Source)
+                                      .Include(s => s.ApplicationWindows)
+                                    .Where(s => 
+                                        s.IsActive && 
+                                        s.DataOrigin == "OFFICIAL" && 
+                                        !excludedOrigins.Contains(s.DataOrigin) && 
+                                        (s.VerificationStatus == "Verified" || s.VerificationStatus == "VERIFIED") && 
+                                        (string.IsNullOrEmpty(profile.Purpose) || s.Purpose == targetPurpose || s.Purpose == profile.Purpose || matchCategoryAliases.Contains(s.SchemeCategory) || matchCategoryAliases.Contains(s.Purpose)))
+                                    .ToList();
+                                    
+            var allRules = _context.SchemeEligibilityRules.ToList();
 
             var recommended = new List<object>();
             var notEligible = new List<object>();
@@ -101,14 +86,9 @@ namespace ArthSetuBackend.Controllers
 
             foreach (var scheme in activeSchemes)
             {
-                var rules = allRules.Where(r => r.SchemeId == scheme.Id && !OutputOnlyRuleFields.Contains(r.Field)).ToList();
-                if (rules.Count == 0) continue;
-
+                var rules = allRules.Where(r => r.SchemeId == scheme.Id).ToList();
                 var evalRes = EvaluateRules(rules, profile);
-                var applicationStatus = GetCurrentApplicationStatus(scheme);
-                var sourceUrl = FirstNonEmpty(scheme.OfficialRuleSource, scheme.OfficialSourceUrl, NormalizeOfficialDomain(scheme.Source?.OfficialDomain));
-                var owningAuthority = GetOwningAuthority(scheme);
-
+                
                 var schemeData = new
                 {
                     id = scheme.Id,
@@ -117,275 +97,229 @@ namespace ArthSetuBackend.Controllers
                     benefitType = scheme.BenefitType,
                     schemeCategory = scheme.SchemeCategory,
                     purpose = scheme.Purpose,
-                    ministry = scheme.Ministry,
-                    department = scheme.Department,
-                    owningAuthority,
-                    governmentLevel = scheme.GovernmentLevel ?? scheme.Scope,
-                    applicationRoute = GetApplicationRoute(scheme, evalRes, applicationStatus),
-                    applicationStatus,
-                    applicationUrl = IsTrustedApplicationUrl(scheme) ? scheme.OfficialApplicationUrl : null,
+                    applicationRoute = GetApplicationRoute(scheme, evalRes),
                     verificationStatus = scheme.VerificationStatus,
-                    lastVerified = scheme.LastVerified?.ToString("dd MMM yyyy") ?? scheme.Source?.LastVerified?.ToString("dd MMM yyyy") ?? "",
-                    officialSource = scheme.Source?.SourceName ?? owningAuthority,
-                    sourceUrl,
+                    lastVerified = scheme.LastVerified?.ToString("yyyy-MM-dd") ?? "",
+                    officialSource = scheme.Source?.SourceName ?? "Government Source",
+                    source = scheme.Source?.OfficialDomain ?? "india.gov.in",
                     ruleComparisons = evalRes.Passed.Concat(evalRes.Failed).Concat(evalRes.Missing.Select(m => new { ruleName = m, status = "Missing" })).ToList(),
                     missingRules = evalRes.Missing
                 };
 
-                if (evalRes.EligibilityState == "Not Eligible") notEligible.Add(schemeData);
-                else if (evalRes.EligibilityState == "More Information Needed") moreInfoNeeded.Add(schemeData);
-                else recommended.Add(schemeData);
+                if (evalRes.EligibilityState == "Not Eligible")
+                    notEligible.Add(schemeData);
+                else if (evalRes.EligibilityState == "More Information Needed")
+                    moreInfoNeeded.Add(schemeData);
+                else
+                    recommended.Add(schemeData);
             }
 
-            return Ok(new { recommended, otherEligible = Array.Empty<object>(), moreInfoNeeded, notEligible });
+            return Ok(new { recommended, otherEligible = new List<object>(), moreInfoNeeded, notEligible });
         }
 
         [HttpPost("dynamic-questions")]
         public IActionResult GetDynamicQuestions([FromBody] UserProfile profile)
         {
-            var targetPurpose = NormalizePurpose(profile.Purpose);
-            var schemes = _context.Schemes
-                .AsNoTracking()
-                .Include(s => s.Source)
-                .Where(s => s.IsActive && s.DataOrigin == "OFFICIAL" &&
-                    (s.VerificationStatus == "Verified" || s.VerificationStatus == "VERIFIED"))
-                .ToList();
-            var allRules = _context.SchemeEligibilityRules.AsNoTracking().ToList();
-            var unresolvedConflictSchemeIds = _context.SourceConflicts
-                .AsNoTracking()
-                .Where(c => c.Status != "RESOLVED" && c.Status != "Resolved" && c.Status != "CLOSED" && c.Status != "Closed")
-                .Select(c => c.SchemeId)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            var missingRules = new Dictionary<string, SchemeEligibilityRule>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var scheme in schemes)
+            var purposeMap2 = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                var rules = allRules.Where(r => r.SchemeId == scheme.Id && !OutputOnlyRuleFields.Contains(r.Field)).ToList();
-                if (!IsCitizenPublishable(scheme, scheme.Source, rules, unresolvedConflictSchemeIds.Contains(scheme.Id))) continue;
-                if (!PurposeMatches(scheme, profile.Purpose, targetPurpose) || !GeographyMatches(scheme, profile.State, profile.District)) continue;
+                { "Business", "Income-Generating Activities" },
+                { "Business & Entrepreneurship", "Income-Generating Activities" },
+                { "Entrepreneurship", "Income-Generating Activities" },
+                { "Income Generating", "Income-Generating Activities" },
+            };
+            var targetPurpose = purposeMap2.TryGetValue(profile.Purpose ?? "", out var mappedPurpose2)
+                ? mappedPurpose2
+                : profile.Purpose;
 
-                var evalRes = EvaluateRules(rules, profile);
-                if (evalRes.EligibilityState == "Not Eligible") continue;
-
-                foreach (var field in evalRes.Missing)
+            var categoryAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (profile.Purpose != null)
+            {
+                var purposeLower = profile.Purpose.ToLower();
+                if (purposeLower.Contains("business") || purposeLower.Contains("entrepreneur") || purposeLower.Contains("income"))
                 {
-                    if (!missingRules.ContainsKey(field))
+                    categoryAliases.Add("Business");
+                    categoryAliases.Add("Income-Generating Activities");
+                    categoryAliases.Add("Micro Finance");
+                    categoryAliases.Add("Term Loan");
+                }
+                else if (purposeLower.Contains("education") || purposeLower.Contains("scholarship"))
+                {
+                    categoryAliases.Add("Education");
+                    categoryAliases.Add("Scholarship");
+                }
+                else if (purposeLower.Contains("agriculture") || purposeLower.Contains("farm"))
+                {
+                    categoryAliases.Add("Agriculture");
+                }
+                else if (purposeLower.Contains("startup"))
+                {
+                    categoryAliases.Add("Startup");
+                    categoryAliases.Add("Business");
+                }
+                else
+                {
+                    categoryAliases.Add(profile.Purpose);
+                }
+            }
+            var categoryAliasList = categoryAliases.ToList(); // EF requires List for Contains
+            
+            var activeSchemes = _context.Schemes
+                                    .Where(s => s.IsActive && s.DataOrigin == "OFFICIAL" && s.VerificationStatus == "Verified" && (string.IsNullOrEmpty(profile.Purpose) || s.Purpose == targetPurpose || s.Purpose == profile.Purpose || categoryAliasList.Contains(s.SchemeCategory) || categoryAliasList.Contains(s.Purpose)))
+                                    .ToList();
+            
+            var allRules = _context.SchemeEligibilityRules.ToList();
+            
+            // Re-evaluate schemes after each answer to remove failing candidates
+            var survivingSchemes = new List<Scheme>();
+            var allMissing = new HashSet<string>();
+            var missingCounts = new Dictionary<string, int>();
+
+            foreach (var scheme in activeSchemes)
+            {
+                var rules = allRules.Where(r => r.SchemeId == scheme.Id).ToList();
+                var evalRes = EvaluateRules(rules, profile);
+                
+                // Keep only schemes that have not failed
+                if (evalRes.EligibilityState != "Not Eligible")
+                {
+                    survivingSchemes.Add(scheme);
+                    foreach(var m in evalRes.Missing) 
                     {
-                        var sourceRule = rules.FirstOrDefault(r => string.Equals(r.Field, field, StringComparison.OrdinalIgnoreCase));
-                        if (sourceRule != null) missingRules[field] = sourceRule;
+                        allMissing.Add(m);
+                        if (!missingCounts.ContainsKey(m)) missingCounts[m] = 0;
+                        missingCounts[m]++;
                     }
                 }
             }
 
             var questions = new List<object>();
-            var handled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            void Add(string field, object question)
-            {
-                questions.Add(question);
-                handled.Add(field);
-            }
+            // Determine the next best question by sorting missing fields by frequency
+            var sortedMissing = missingCounts.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).ToList();
 
-            if (missingRules.ContainsKey("ProjectCostMax") || missingRules.ContainsKey("ProjectCostMin") || missingRules.ContainsKey("projectCost"))
+            // To not dump all questions, we can limit or just provide them in order of importance.
+            // Let's map standard ones that actually exist in the surviving scheme rules.
+            
+            int addedQuestions = 0;
+            bool projectCostAsked = false;
+            foreach (var m in sortedMissing)
             {
-                var field = missingRules.ContainsKey("ProjectCostMax") ? "ProjectCostMax" : missingRules.ContainsKey("ProjectCostMin") ? "ProjectCostMin" : "projectCost";
-                Add(field, new { id = field, type = "currency", label = "Estimated Project Cost (₹)", helpText = "Required by at least one current verified candidate scheme." });
-                handled.Add("ProjectCostMax"); handled.Add("ProjectCostMin"); handled.Add("projectCost");
-            }
-            if (missingRules.ContainsKey("BusinessActivity") || missingRules.ContainsKey("businessActivity"))
-            {
-                Add("BusinessActivity", new { id = "BusinessActivity", type = "taxonomy", label = "Business / Economic Activity", helpText = "Asked because a current verified candidate scheme has an activity rule." });
-                handled.Add("businessActivity");
-            }
-            if (missingRules.ContainsKey("Gender") && string.IsNullOrWhiteSpace(profile.Gender))
-                Add("Gender", new { id = "Gender", type = "single_choice", label = "Gender", options = new[] { new { label = "Female", value = "Female" }, new { label = "Male", value = "Male" }, new { label = "Other", value = "Other" } } });
-            if (missingRules.ContainsKey("IsPwD") && !profile.IsPwD.HasValue)
-                Add("IsPwD", new { id = "IsPwD", type = "single_choice", label = "Are you a Person with Disability (PwD)?", options = new[] { new { label = "Yes", value = "true" }, new { label = "No", value = "false" } } });
-            if (missingRules.ContainsKey("DisabilityPercentageMin") && !ResolveDisabilityPercentage(profile).HasValue && profile.IsPwD != false)
-                Add("DisabilityPercentageMin", new { id = "DisabilityPercentage", type = "numeric", label = "Disability Percentage (%)", helpText = "The eligibility threshold itself is evaluated from the verified scheme rule." });
-            if (missingRules.ContainsKey("ApplicantType") && string.IsNullOrWhiteSpace(profile.ApplicantType))
-                Add("ApplicantType", new { id = "ApplicantType", type = "single_choice", label = "Applicant Type", options = new[] { new { label = "Individual", value = "Individual" }, new { label = "Self-Help Group (SHG)", value = "SHG" } } });
+                if (addedQuestions >= 5) break; // ask max 5 at a time
 
-            foreach (var entry in missingRules.Where(kvp => !handled.Contains(kvp.Key)))
-            {
-                var field = entry.Key;
-                var rule = entry.Value;
-                var label = HumanizeField(field);
-                var op = rule.Operator ?? string.Empty;
-
-                if (op is "LessThanOrEqual" or "GreaterThanOrEqual" or "LessThan" or "GreaterThan" or "Min" or "Max")
+                if ((m.Equals("ProjectCostMax", StringComparison.OrdinalIgnoreCase) || m.Equals("ProjectCostMin", StringComparison.OrdinalIgnoreCase) || m.Equals("projectCost", StringComparison.OrdinalIgnoreCase)) && !projectCostAsked)
                 {
-                    questions.Add(new { id = field, type = "numeric", label, helpText = "Required by a current verified Government scheme rule." });
+                    questions.Add(new { id = "projectCost", type = "currency", label = "Estimated Project Cost (₹)", helpText = "Total amount needed for your business or project" });
+                    addedQuestions++;
+                    projectCostAsked = true;
                 }
-                else if ((op == "Equals" || op == "InList") && !string.IsNullOrWhiteSpace(rule.Value))
+                else if (m.Equals("BusinessActivity", StringComparison.OrdinalIgnoreCase))
                 {
-                    var options = rule.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .Select(v => new { label = v, value = v })
-                        .ToArray();
-                    if (options.Length > 0) questions.Add(new { id = field, type = "single_choice", label, options });
-                    else questions.Add(new { id = field, type = "text", label });
+                    questions.Add(new { id = "BusinessActivity", type = "taxonomy", label = "Select Business / Economic Activity" });
+                    addedQuestions++;
                 }
-                else
+                else if (m.Equals("Gender", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(profile.Gender))
                 {
-                    questions.Add(new { id = field, type = "text", label, helpText = "Required by a current verified Government scheme rule." });
+                    questions.Add(new { id = "Gender", type = "single_choice", label = "Gender", options = new[] { new {label="Female", value="Female"}, new {label="Male", value="Male"}, new {label="Other", value="Other"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("IsPwD", StringComparison.OrdinalIgnoreCase) && !profile.IsPwD.HasValue)
+                {
+                    questions.Add(new { id = "IsPwD", type = "single_choice", label = "Are you a Person with Disability (PwD)?", options = new[] { new {label="Yes", value="true"}, new {label="No", value="false"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("DisabilityPercentageMin", StringComparison.OrdinalIgnoreCase) && !profile.DisabilityPercentage.HasValue && profile.IsPwD != false)
+                {
+                    questions.Add(new { id = "DisabilityPercentage", type = "numeric", label = "Disability Percentage (%)" });
+                    addedQuestions++;
+                }
+                else if (m.Equals("ApplicantType", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(profile.ApplicantType))
+                {
+                    questions.Add(new { id = "ApplicantType", type = "single_choice", label = "Applicant Type", options = new[] { new {label="Individual", value="Individual"}, new {label="Self-Help Group (SHG)", value="SHG"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("educationLevel", StringComparison.OrdinalIgnoreCase))
+                {
+                    questions.Add(new { id = "educationLevel", type = "single_choice", label = "Education Level", options = new[] { new {label="8th Pass", value="8th Pass"}, new {label="10th Pass", value="10th Pass"}, new {label="12th Pass", value="12th Pass"}, new {label="Undergraduate", value="Undergraduate"}, new {label="Postgraduate", value="Postgraduate"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("PriorGovernmentSubsidy", StringComparison.OrdinalIgnoreCase))
+                {
+                    questions.Add(new { id = "PriorGovernmentSubsidy", type = "single_choice", label = "Have you received any prior Government Subsidy?", options = new[] { new {label="Yes", value="Yes"}, new {label="No", value="No"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("RequestedLoanAmount", StringComparison.OrdinalIgnoreCase))
+                {
+                    questions.Add(new { id = "RequestedLoanAmount", type = "currency", label = "Requested Loan Amount (₹)" });
+                    addedQuestions++;
+                }
+                else if (m.Equals("ExistingEnterprise", StringComparison.OrdinalIgnoreCase))
+                {
+                    questions.Add(new { id = "ExistingEnterprise", type = "single_choice", label = "Is this an existing enterprise?", options = new[] { new {label="Yes", value="Yes"}, new {label="No", value="No"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("Category", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(profile.Category))
+                {
+                    questions.Add(new { id = "Category", type = "single_choice", label = "Social Category", options = new[] { new {label="General", value="General"}, new {label="SC", value="SC"}, new {label="ST", value="ST"}, new {label="OBC", value="OBC"} } });
+                    addedQuestions++;
+                }
+                else if (m.Equals("AnnualFamilyIncome", StringComparison.OrdinalIgnoreCase) || m.Equals("income", StringComparison.OrdinalIgnoreCase))
+                {
+                    questions.Add(new { id = "income", type = "currency", label = "Annual Family Income (₹)" });
+                    addedQuestions++;
                 }
             }
 
             return Ok(questions);
         }
 
-        private static string NormalizePurpose(string? purpose)
+                        private string GetApplicationRoute(Scheme scheme, (string EligibilityState, List<object> Passed, List<object> Failed, List<string> Missing) evalRes)
         {
-            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            string windowStatus = "UNKNOWN";
+            var window = scheme.ApplicationWindows.OrderByDescending(w => w.EndDate).FirstOrDefault();
+            if (window != null)
             {
-                ["Business"] = "Income-Generating Activities",
-                ["Business & Entrepreneurship"] = "Income-Generating Activities",
-                ["Entrepreneurship"] = "Income-Generating Activities",
-                ["Income Generating"] = "Income-Generating Activities"
-            };
-            if (string.IsNullOrWhiteSpace(purpose)) return string.Empty;
-            return map.TryGetValue(purpose, out var mapped) ? mapped : purpose;
-        }
-
-        private static bool PurposeMatches(Scheme scheme, string? rawPurpose, string targetPurpose)
-        {
-            if (string.IsNullOrWhiteSpace(rawPurpose)) return true;
-            if (string.IsNullOrWhiteSpace(scheme.Purpose)) return false;
-            return string.Equals(scheme.Purpose, targetPurpose, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(scheme.Purpose, rawPurpose, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool GeographyMatches(Scheme scheme, string? state, string? district)
-        {
-            if (string.IsNullOrWhiteSpace(state)) return true;
-            var level = scheme.GovernmentLevel ?? scheme.Scope ?? string.Empty;
-            var applicability = scheme.ApplicableStateUT ?? string.Empty;
-            var districtApplicability = scheme.ApplicableDistrict ?? string.Empty;
-
-            if (string.Equals(level, "Central", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(applicability)) return true;
-            if (!string.IsNullOrWhiteSpace(applicability) &&
-                !applicability.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Any(v => string.Equals(v, state, StringComparison.OrdinalIgnoreCase) || string.Equals(v, "ALL", StringComparison.OrdinalIgnoreCase) || string.Equals(v, "ALL INDIA", StringComparison.OrdinalIgnoreCase)))
-                return false;
-
-            if (!string.IsNullOrWhiteSpace(districtApplicability) && !string.IsNullOrWhiteSpace(district) &&
-                !districtApplicability.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Any(v => string.Equals(v, district, StringComparison.OrdinalIgnoreCase) || string.Equals(v, "ALL", StringComparison.OrdinalIgnoreCase)))
-                return false;
-
-            if ((string.Equals(level, "State", StringComparison.OrdinalIgnoreCase) || string.Equals(level, "UT", StringComparison.OrdinalIgnoreCase)) && string.IsNullOrWhiteSpace(applicability))
-                return false;
-
-            return true;
-        }
-
-        private static bool IsCitizenPublishable(Scheme scheme, GovernmentSource? source, List<SchemeEligibilityRule> rules, bool hasCriticalConflict)
-        {
-            if (!scheme.IsActive) return false;
-            if (!string.Equals(scheme.DataOrigin, "OFFICIAL", StringComparison.OrdinalIgnoreCase)) return false;
-            if (ExcludedOrigins.Any(o => string.Equals(o, scheme.DataOrigin, StringComparison.OrdinalIgnoreCase))) return false;
-            if (!string.Equals(scheme.VerificationStatus, "VERIFIED", StringComparison.OrdinalIgnoreCase) && !string.Equals(scheme.VerificationStatus, "Verified", StringComparison.OrdinalIgnoreCase)) return false;
-            if (string.IsNullOrWhiteSpace(scheme.Name) || SyntheticNamePattern.IsMatch(scheme.Name)) return false;
-            if (source == null || string.IsNullOrWhiteSpace(source.SourceName)) return false;
-            if (string.IsNullOrWhiteSpace(GetOwningAuthority(scheme))) return false;
-            if (string.IsNullOrWhiteSpace(scheme.OfficialRuleSource) && string.IsNullOrWhiteSpace(scheme.OfficialSourceUrl) && string.IsNullOrWhiteSpace(source.OfficialDomain)) return false;
-            if (hasCriticalConflict) return false;
-            if (string.Equals(scheme.LifecycleStatus, "SUPERSEDED", StringComparison.OrdinalIgnoreCase) || string.Equals(scheme.LifecycleStatus, "DISCONTINUED", StringComparison.OrdinalIgnoreCase)) return false;
-
-            var meaningfulRules = rules.Where(r => !OutputOnlyRuleFields.Contains(r.Field)).ToList();
-            if (meaningfulRules.Count == 0) return false; // no known rule is NOT equivalent to universally eligible
-            if (!meaningfulRules.Any(r => r.Mandatory)) return false;
-
-            return true;
-        }
-
-        private static bool IsResolvedConflict(string? status) =>
-            string.Equals(status, "RESOLVED", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(status, "CLOSED", StringComparison.OrdinalIgnoreCase);
-
-        private static string GetOwningAuthority(Scheme scheme)
-        {
-            return FirstNonEmpty(scheme.OwningAuthority,
-                string.Join(" · ", new[] { scheme.Ministry, scheme.Department }.Where(v => !string.IsNullOrWhiteSpace(v))),
-                scheme.ImplementingAgency,
-                scheme.Source?.Ministry,
-                scheme.Source?.Department,
-                scheme.Source?.SourceName);
-        }
-
-        private static string FirstNonEmpty(params string?[] values) => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
-
-        private static string? NormalizeOfficialDomain(string? domain)
-        {
-            if (string.IsNullOrWhiteSpace(domain)) return null;
-            if (Uri.TryCreate(domain, UriKind.Absolute, out var absolute)) return absolute.ToString();
-            return Uri.TryCreate($"https://{domain.Trim('/')}", UriKind.Absolute, out var uri) ? uri.ToString() : null;
-        }
-
-        private static bool IsTrustedApplicationUrl(Scheme scheme)
-        {
-            if (string.IsNullOrWhiteSpace(scheme.OfficialApplicationUrl)) return false;
-            return Uri.TryCreate(scheme.OfficialApplicationUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
-        }
-
-        private static string GetCurrentApplicationStatus(Scheme scheme)
-        {
-            var now = DateTime.UtcNow.Date;
-            var windows = scheme.ApplicationWindows?.OrderByDescending(w => w.EndDate ?? DateTime.MaxValue).ToList() ?? new List<SchemeApplicationWindow>();
-            var current = windows.FirstOrDefault(w => (!w.StartDate.HasValue || w.StartDate.Value.Date <= now) && (!w.EndDate.HasValue || w.EndDate.Value.Date >= now));
-            if (current != null)
-            {
-                if (!string.IsNullOrWhiteSpace(current.Status)) return current.Status!.ToUpperInvariant();
-                return "OPEN";
+                windowStatus = window.Status ?? "UNKNOWN";
             }
 
-            var future = windows.Where(w => w.StartDate.HasValue && w.StartDate.Value.Date > now).OrderBy(w => w.StartDate).FirstOrDefault();
-            if (future != null) return "NOT_YET_OPEN";
-            if (windows.Any(w => w.EndDate.HasValue && w.EndDate.Value.Date < now)) return "CLOSED";
-
-            if (scheme.ApplicationStartDate.HasValue || scheme.ApplicationEndDate.HasValue)
-            {
-                if (scheme.ApplicationStartDate.HasValue && now < scheme.ApplicationStartDate.Value.Date) return "NOT_YET_OPEN";
-                if (scheme.ApplicationEndDate.HasValue && now > scheme.ApplicationEndDate.Value.Date) return "CLOSED";
-                return "OPEN";
-            }
-
-            if (string.Equals(scheme.ApplicationMode, "NO_APPLICATION_REQUIRED", StringComparison.OrdinalIgnoreCase)) return "NOT_APPLICABLE";
-            return "UNKNOWN";
-        }
-
-        private static string GetApplicationRoute(Scheme scheme, (string EligibilityState, List<object> Passed, List<object> Failed, List<string> Missing) evalRes, string applicationStatus)
-        {
             if (evalRes.EligibilityState == "Not Eligible") return "Not Eligible";
-            if (applicationStatus == "CLOSED") return "Applications Closed";
-            if (applicationStatus == "NOT_YET_OPEN") return "Not Yet Open";
+            if (windowStatus == "CLOSED") return "Applications Closed";
+            if (windowStatus == "NOT_YET_OPEN") return "Not Yet Open";
 
-            var mode = scheme.ApplicationMode ?? string.Empty;
-            if (string.Equals(mode, "NO_APPLICATION_REQUIRED", StringComparison.OrdinalIgnoreCase)) return "No Application Required";
-            if (string.Equals(mode, "PARTNER_ROUTED", StringComparison.OrdinalIgnoreCase)) return "Find Authorized Partner";
-            if (string.Equals(mode, "INSTITUTION_ROUTED", StringComparison.OrdinalIgnoreCase)) return "Apply Through Institution";
-            if (string.Equals(mode, "CSC_ROUTED", StringComparison.OrdinalIgnoreCase)) return "Apply Through CSC";
-            if (string.Equals(mode, "OFFLINE", StringComparison.OrdinalIgnoreCase)) return "View Offline Application Process";
+            if (scheme.ApplicationMode == "OFFICIAL_ONLINE_PORTAL")
+            {
+                if (!string.IsNullOrEmpty(scheme.ApplicationPortal))
+                    return $"APPLY ON {scheme.ApplicationPortal.ToUpper()}";
+                return "APPLY ON OFFICIAL PORTAL";
+            }
+            if (scheme.ApplicationMode == "PARTNER_ROUTED")
+                return "CONTACT AUTHORIZED CHANNEL PARTNER";
+            if (scheme.ApplicationMode == "INSTITUTION_ROUTED")
+                return "APPLY THROUGH INSTITUTION";
+            if (scheme.ApplicationMode == "CSC_ROUTED")
+                return "APPLY VIA CSC";
+            if (scheme.ApplicationMode == "OFFLINE")
+                return "OFFLINE APPLICATION";
 
-            if (string.Equals(mode, "OFFICIAL_ONLINE_PORTAL", StringComparison.OrdinalIgnoreCase) && applicationStatus == "OPEN" && IsTrustedApplicationUrl(scheme))
-                return !string.IsNullOrWhiteSpace(scheme.ApplicationPortal) ? $"Apply on {scheme.ApplicationPortal}" : "Apply on Official Portal";
+            if (windowStatus == "OPEN" && !string.IsNullOrEmpty(scheme.OfficialApplicationUrl))
+                return "Apply on Official Portal";
 
-            if (applicationStatus == "UNKNOWN") return "Application Status Not Verified";
-            if (applicationStatus == "NOT_APPLICABLE") return "View Official Scheme Information";
-            return "Application Route Not Verified";
+            return "Check Official Portal / Status not verified";
         }
 
-        private static (string EligibilityState, List<object> Passed, List<object> Failed, List<string> Missing) EvaluateRules(List<SchemeEligibilityRule> rules, UserProfile profile)
+        private (string EligibilityState, List<object> Passed, List<object> Failed, List<string> Missing) EvaluateRules(List<SchemeEligibilityRule> rules, UserProfile profile)
         {
             var passed = new List<object>();
             var failed = new List<object>();
             var missing = new List<string>();
+            bool hasMandatoryRule = false;
+            bool hasEvaluatedMandatoryPass = false;
 
-            foreach (var rule in rules.OrderBy(r => r.EvaluationOrder))
+            foreach (var rule in rules)
             {
-                if (OutputOnlyRuleFields.Contains(rule.Field)) continue;
+                // Skip scheme output/info fields — not user eligibility criteria
+                if (rule.Field == "InterestRate" || rule.Field == "MaximumLoan" || rule.Field == "Tenure" || rule.Field == "MarginMoney" || rule.Field == "SubsidyRate" || rule.Field == "Moratorium" || rule.Field == "SpecialEligibility") continue;
+
+                if (rule.Mandatory) hasMandatoryRule = true;
 
                 var userValue = ResolveValue(profile, rule.Field);
                 if (userValue == null || string.IsNullOrWhiteSpace(userValue.ToString()))
@@ -394,121 +328,142 @@ namespace ArthSetuBackend.Controllers
                     continue;
                 }
 
-                var isPass = false;
-                var expectedCondition = rule.Value ?? string.Empty;
-                var op = rule.Operator ?? string.Empty;
-                var userValueStr = userValue.ToString() ?? string.Empty;
+                bool isPass = false;
+                string expectedCondition = rule.Value ?? "";
+                string op = rule.Operator ?? "";
+                string userValueStr = userValue.ToString() ?? "";
 
                 if (op == "Equals" || op == "InList")
                 {
-                    var vals = (rule.Value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                    isPass = vals.Any(v => string.Equals(v, userValueStr, StringComparison.OrdinalIgnoreCase));
+                    var vals = (rule.Value ?? "").Split(',').Select(s => s.Trim().ToLower()).ToList();
+                    isPass = vals.Contains(userValueStr.ToLower());
                 }
-                else if (TryNumeric(userValueStr, out var userNumber) && decimal.TryParse(rule.Value, out var ruleNumber))
+                else if (op == "LessThanOrEqual" || op == "Max")
                 {
-                    if (op == "LessThanOrEqual" || op == "Max") isPass = userNumber <= ruleNumber;
-                    else if (op == "GreaterThanOrEqual" || op == "Min") isPass = userNumber >= ruleNumber;
-                    else if (op == "GreaterThan") isPass = userNumber > ruleNumber;
-                    else if (op == "LessThan") isPass = userNumber < ruleNumber;
+                    string cleanVal = userValueStr.Replace(",", "").Replace("₹", "").Trim();
+                    if (decimal.TryParse(cleanVal, out decimal uVal) && decimal.TryParse(rule.Value, out decimal maxVal))
+                    {
+                        isPass = uVal <= maxVal;
+                        expectedCondition = $"Max {rule.Value}";
+                    }
+                }
+                else if (op == "GreaterThanOrEqual" || op == "Min")
+                {
+                    string cleanVal = userValueStr.Replace(",", "").Replace("₹", "").Trim();
+                    if (decimal.TryParse(cleanVal, out decimal uVal) && decimal.TryParse(rule.Value, out decimal minVal))
+                    {
+                        isPass = uVal >= minVal;
+                        expectedCondition = $"Min {rule.Value}";
+                    }
+                }
+                else if (op == "GreaterThan")
+                {
+                    string cleanVal = userValueStr.Replace(",", "").Replace("₹", "").Trim();
+                    if (decimal.TryParse(cleanVal, out decimal uVal) && decimal.TryParse(rule.Value, out decimal minVal))
+                    {
+                        isPass = uVal > minVal;
+                        expectedCondition = $"More than {rule.Value}";
+                    }
+                }
+                else if (op == "LessThan")
+                {
+                    string cleanVal = userValueStr.Replace(",", "").Replace("₹", "").Trim();
+                    if (decimal.TryParse(cleanVal, out decimal uVal) && decimal.TryParse(rule.Value, out decimal maxVal))
+                    {
+                        isPass = uVal < maxVal;
+                        expectedCondition = $"Less than {rule.Value}";
+                    }
+                }
+                else 
+                {
+                    // Fallback for Unknown operator, if mandatory we should fail it to be safe
+                    // Actually, if it's unknown operator but matched exact, we can pass, otherwise fail.
+                    isPass = userValueStr.Equals(expectedCondition, StringComparison.OrdinalIgnoreCase);
                 }
 
-                if (isPass) passed.Add(new { ruleName = HumanizeField(rule.Field), userValue = userValueStr, schemeCondition = expectedCondition, status = "Matched" });
-                else failed.Add(new { ruleName = HumanizeField(rule.Field), userValue = userValueStr, schemeCondition = expectedCondition, status = "Failed" });
+                if (isPass)
+                {
+                    passed.Add(new { ruleName = rule.Field, userValue = userValueStr, schemeCondition = expectedCondition, status = "Matched" });
+                    if (rule.Mandatory) hasEvaluatedMandatoryPass = true;
+                }
+                else
+                {
+                    failed.Add(new { ruleName = rule.Field, userValue = userValueStr, schemeCondition = expectedCondition, status = "Failed" });
+                }
             }
 
-            var state = failed.Any() ? "Not Eligible" : missing.Any() ? "More Information Needed" : "Eligible";
-            return (state, passed, failed, missing.Distinct(StringComparer.OrdinalIgnoreCase).Select(HumanizeField).ToList());
+            string state = "Eligible";
+            if (!hasMandatoryRule) state = "Not Eligible"; // No-rule schemes must NOT become eligible
+            else if (failed.Any(f => true)) state = "Not Eligible"; // Any FAIL -> NOT ELIGIBLE
+            else if (missing.Any()) state = "More Information Needed"; // No FAIL + at least one mandatory UNKNOWN
+            else if (!hasEvaluatedMandatoryPass) state = "Not Eligible"; // No evaluated rule must NOT mean eligible
+            else state = "Eligible"; // all applicable mandatory rules PASS
+
+            return (state, passed, failed, missing);
         }
 
-        private static bool TryNumeric(string raw, out decimal value)
+        private object? ResolveValue(UserProfile profile, string field)
         {
-            var cleaned = raw.Replace(",", string.Empty).Replace("₹", string.Empty).Replace("%", string.Empty).Trim();
-            return decimal.TryParse(cleaned, out value);
-        }
-
-        private static int? ResolveDisabilityPercentage(UserProfile profile)
-        {
-            if (profile.DisabilityPercentage.HasValue) return profile.DisabilityPercentage;
-            if (profile.DynamicAnswers != null && profile.DynamicAnswers.TryGetValue("DisabilityPercentage", out var dynamicValue) && int.TryParse(dynamicValue, out var parsed)) return parsed;
-            return null;
-        }
-
-        private static object? ResolveValue(UserProfile profile, string field)
-        {
-            if (field.Equals("Community", StringComparison.OrdinalIgnoreCase) || field.Equals("category", StringComparison.OrdinalIgnoreCase)) return profile.Category;
-            if (field.Equals("AnnualFamilyIncome", StringComparison.OrdinalIgnoreCase) || field.Equals("income", StringComparison.OrdinalIgnoreCase)) return profile.Income;
-            if (field.Equals("State", StringComparison.OrdinalIgnoreCase) || field.Equals("state", StringComparison.OrdinalIgnoreCase)) return profile.State;
-            if (field.Equals("District", StringComparison.OrdinalIgnoreCase) || field.Equals("district", StringComparison.OrdinalIgnoreCase)) return profile.District;
-            if (field.Equals("Gender", StringComparison.OrdinalIgnoreCase)) return profile.Gender;
-            if (field.Equals("IsPwD", StringComparison.OrdinalIgnoreCase)) return profile.IsPwD;
-            if (field.Equals("DisabilityPercentageMin", StringComparison.OrdinalIgnoreCase) || field.Equals("DisabilityPercentage", StringComparison.OrdinalIgnoreCase)) return ResolveDisabilityPercentage(profile);
-            if (field.Equals("ApplicantType", StringComparison.OrdinalIgnoreCase)) return profile.ApplicantType;
-            if (field.Equals("EWS", StringComparison.OrdinalIgnoreCase) || field.Equals("IsEWS", StringComparison.OrdinalIgnoreCase)) return profile.IsEws;
-            if (field.Equals("Minority", StringComparison.OrdinalIgnoreCase) || field.Equals("IsMinority", StringComparison.OrdinalIgnoreCase)) return profile.IsMinority;
-            if (field.Equals("ExServiceman", StringComparison.OrdinalIgnoreCase) || field.Equals("IsExServiceman", StringComparison.OrdinalIgnoreCase)) return profile.IsExServiceman;
-            if (field.StartsWith("Age", StringComparison.OrdinalIgnoreCase) && profile.Dob.HasValue) return CalculateAge(profile.Dob.Value.Date, DateTime.UtcNow.Date);
-
-            if (field.StartsWith("ProjectCost", StringComparison.OrdinalIgnoreCase) && profile.DynamicAnswers != null)
+            // Mappings
+            if (field == "Community" || field == "category") return profile.Category;
+            if (field == "AnnualFamilyIncome" || field == "income") return profile.Income;
+            if (field == "State" || field == "state") return profile.State;
+            if (field == "Gender") return profile.Gender;
+            if (field == "IsPwD") return profile.IsPwD;
+            if (field == "DisabilityPercentageMin") return profile.DisabilityPercentage;
+            if (field == "ApplicantType") return profile.ApplicantType;
+            
+            if (field.StartsWith("ProjectCost") && profile.DynamicAnswers != null)
             {
-                if (profile.DynamicAnswers.TryGetValue("ProjectCostMax", out var projectCostMax)) return projectCostMax;
-                if (profile.DynamicAnswers.TryGetValue("ProjectCostMin", out var projectCostMin)) return projectCostMin;
-                if (profile.DynamicAnswers.TryGetValue("projectCost", out var projectCost)) return projectCost;
+                if (profile.DynamicAnswers.ContainsKey("ProjectCostMax")) return profile.DynamicAnswers["ProjectCostMax"];
+                if (profile.DynamicAnswers.ContainsKey("projectCost")) return profile.DynamicAnswers["projectCost"];
+            }
+
+            var prop = typeof(UserProfile).GetProperty(char.ToUpper(field[0]) + field.Substring(1));
+            if (prop != null)
+            {
+                var val = prop.GetValue(profile);
+                if (val != null) return val;
             }
 
             if (profile.DynamicAnswers != null)
             {
-                if (profile.DynamicAnswers.TryGetValue(field, out var exact)) return exact;
-                var camelField = char.ToLowerInvariant(field[0]) + field[1..];
-                if (profile.DynamicAnswers.TryGetValue(camelField, out var camel)) return camel;
+                if (profile.DynamicAnswers.ContainsKey(field)) return profile.DynamicAnswers[field];
+                var camelField = char.ToLower(field[0]) + field.Substring(1);
+                if (profile.DynamicAnswers.ContainsKey(camelField)) return profile.DynamicAnswers[camelField];
             }
 
-            var prop = typeof(UserProfile).GetProperties().FirstOrDefault(p => string.Equals(p.Name, field, StringComparison.OrdinalIgnoreCase));
-            return prop?.GetValue(profile);
-        }
-
-        private static int CalculateAge(DateTime dob, DateTime today)
-        {
-            var age = today.Year - dob.Year;
-            if (dob.Date > today.AddYears(-age)) age--;
-            return age;
-        }
-
-        private static string HumanizeField(string field)
-        {
-            if (string.IsNullOrWhiteSpace(field)) return "Additional information";
-            var normalized = Regex.Replace(field, "(Min|Max)$", string.Empty);
-            normalized = Regex.Replace(normalized, "([a-z0-9])([A-Z])", "$1 $2");
-            return normalized.Replace("Is Pw D", "PwD").Trim();
+            return null;
         }
     }
 
     [ApiController]
     [Route("api/locations")]
-    public class LocationController : ControllerBase
+        public class LocationController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        public LocationController(ApplicationDbContext context) { _context = context; }
 
-        public LocationController(ApplicationDbContext context)
+        [HttpGet("states")]
+        public IActionResult GetStates()
         {
-            _context = context;
+            var states = _context.LocationMaster
+                .Where(l => (l.Type == "State" || l.Type == "UT") && l.VerificationStatus == "VERIFIED")
+                .Select(l => new { code = l.Code, name = l.Name })
+                .ToList();
+            return Ok(states);
         }
 
         [HttpGet("districts")]
         public IActionResult GetDistricts([FromQuery] string state)
         {
-            if (string.IsNullOrWhiteSpace(state)) return BadRequest(new { message = "State/UT is required." });
+            var parent = _context.LocationMaster.FirstOrDefault(l => l.Code == state && (l.Type == "State" || l.Type == "UT"));
+            if (parent == null) return Ok(new object[0]);
 
-            var parent = _context.LocationMaster.AsNoTracking().FirstOrDefault(l =>
-                (l.Type == "State" || l.Type == "UT") && l.Code == state);
-
-            if (parent == null) return Ok(Array.Empty<object>());
-
-            var districts = _context.LocationMaster.AsNoTracking()
-                .Where(l => l.Type == "District" && l.ParentId == parent.Id)
-                .OrderBy(l => l.Name)
+            var districts = _context.LocationMaster
+                .Where(l => l.ParentId == parent.Id && l.Type == "District" && l.VerificationStatus == "VERIFIED")
                 .Select(l => new { code = l.Code, name = l.Name })
                 .ToList();
-
             return Ok(districts);
         }
     }
@@ -516,19 +471,21 @@ namespace ArthSetuBackend.Controllers
     public class UserProfile
     {
         public string? Purpose { get; set; }
-        public string? BeneficiaryType { get; set; }
-        public DateTime? Dob { get; set; }
         public string? Category { get; set; }
         public string? Income { get; set; }
         public string? State { get; set; }
-        public string? District { get; set; }
         public string? Gender { get; set; }
         public bool? IsPwD { get; set; }
         public int? DisabilityPercentage { get; set; }
-        public bool? IsEws { get; set; }
-        public bool? IsMinority { get; set; }
-        public bool? IsExServiceman { get; set; }
         public string? ApplicantType { get; set; }
         public Dictionary<string, string>? DynamicAnswers { get; set; }
     }
 }
+
+
+
+
+
+
+
+

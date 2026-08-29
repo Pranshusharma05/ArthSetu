@@ -9,6 +9,8 @@ namespace ArthSetuBackend.Models
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty; // State, UT, District
         public int? ParentId { get; set; }
+        public string? DataOrigin { get; set; }
+        public string? VerificationStatus { get; set; }
     }
 
     public class SourceSnapshot

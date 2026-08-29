@@ -1,49 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  AlertCircle,
-  Baby,
-  Briefcase,
-  Bus,
-  ChevronDown,
-  ChevronUp,
-  Droplet,
-  GraduationCap,
-  Heart,
-  Home,
-  Info,
-  Landmark,
-  Map,
-  MapPin,
-  Monitor,
-  Search,
-  Shield,
-  ShieldCheck,
-  Trophy,
-  Users,
-  Wrench,
-  XCircle,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, XCircle, AlertCircle, ArrowLeft, Briefcase, GraduationCap, Info, MapPin, ShieldCheck, ChevronDown, ChevronUp, Wrench, Home, Heart, Landmark, Shield, Monitor, Users, Trophy, Bus, Map, Droplet, Baby, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-type Step = 'intro' | 'purpose' | 'about' | 'financial' | 'location' | 'specifics' | 'review' | 'processing' | 'result';
+type Step = 'intro' | 'purpose' | 'about' | 'financial' | 'specifics' | 'location' | 'review' | 'processing' | 'result';
 
 const PURPOSES = [
-  { id: 'Agriculture', icon: Map, title: 'Agriculture, Rural & Environment', desc: 'Farming, dairy, fisheries and rural livelihood support' },
-  { id: 'Banking', icon: Landmark, title: 'Banking & Financial Support', desc: 'Credit, insurance and financial inclusion schemes' },
-  { id: 'Business', icon: Briefcase, title: 'Business & Entrepreneurship', desc: 'Startup, self-employment, services or manufacturing' },
-  { id: 'Education', icon: GraduationCap, title: 'Education & Learning', desc: 'Scholarships, education loans and student support' },
+  { id: 'Agriculture', icon: Map, title: 'Agriculture, Rural & Environment', desc: 'Farming, dairy, or agriculture activity' },
+  { id: 'Banking', icon: Landmark, title: 'Banking, Financial Services & Insurance', desc: 'Financial support and insurance schemes' },
+  { id: 'Business', icon: Briefcase, title: 'Business & Entrepreneurship', desc: 'Business, services, or manufacturing' },
+  { id: 'Education', icon: GraduationCap, title: 'Education & Learning', desc: 'Higher education or professional courses' },
   { id: 'Health', icon: Heart, title: 'Health & Wellness', desc: 'Healthcare and medical assistance' },
-  { id: 'Housing', icon: Home, title: 'Housing & Shelter', desc: 'Housing, home construction and improvement support' },
-  { id: 'PublicSafety', icon: Shield, title: 'Public Safety, Law & Justice', desc: 'Eligible legal and public-safety support programmes' },
-  { id: 'Science', icon: Monitor, title: 'Science, IT & Communications', desc: 'Technology, digital and science-related support' },
-  { id: 'Skills', icon: Wrench, title: 'Skills & Employment', desc: 'Training, employment and livelihood support' },
-  { id: 'SocialWelfare', icon: Users, title: 'Social Welfare & Empowerment', desc: 'Benefits for eligible social and welfare groups' },
-  { id: 'Sports', icon: Trophy, title: 'Sports & Culture', desc: 'Eligible sports and cultural support schemes' },
-  { id: 'Transport', icon: Bus, title: 'Transport & Mobility', desc: 'Eligible transport and mobility support' },
-  { id: 'Travel', icon: MapPin, title: 'Travel & Tourism', desc: 'Tourism and hospitality support programmes' },
-  { id: 'Utility', icon: Droplet, title: 'Utility & Sanitation', desc: 'Water, sanitation and utility support' },
-  { id: 'WomenChild', icon: Baby, title: 'Women & Child', desc: 'Schemes specifically supporting women and children' },
+  { id: 'Housing', icon: Home, title: 'Housing & Shelter', desc: 'Home construction or improvement' },
+  { id: 'PublicSafety', icon: Shield, title: 'Public Safety, Law & Justice', desc: 'Legal and public safety schemes' },
+  { id: 'Science', icon: Monitor, title: 'Science, IT & Communications', desc: 'Technology and science-related support' },
+  { id: 'Skills', icon: Wrench, title: 'Skills & Employment', desc: 'Vocational training and skill development' },
+  { id: 'SocialWelfare', icon: Users, title: 'Social Welfare & Empowerment', desc: 'Support for marginalized sections' },
+  { id: 'Sports', icon: Trophy, title: 'Sports & Culture', desc: 'Athletics and cultural promotions' },
+  { id: 'Transport', icon: Bus, title: 'Transport & Infrastructure', desc: 'Roads, transport and logistics' },
+  { id: 'Travel', icon: MapPin, title: 'Travel & Tourism', desc: 'Hospitality and tourism support' },
+  { id: 'Utility', icon: Droplet, title: 'Utility & Sanitation', desc: 'Water, sanitation, and utilities' },
+  { id: 'WomenChild', icon: Baby, title: 'Women & Child', desc: 'Schemes dedicated to women and children' }
 ];
 
 const ACTIVITY_CATEGORIES = [
@@ -56,7 +32,7 @@ const ACTIVITY_CATEGORIES = [
   { id: 'Transport', title: 'Transport / Logistics' }, { id: 'Tourism', title: 'Tourism / Hospitality' },
   { id: 'Digital', title: 'Digital / IT' }, { id: 'Construction', title: 'Construction' },
   { id: 'SelfEmployment', title: 'Self-Employment' }, { id: 'SHG', title: 'SHG / Group Enterprise' },
-  { id: 'Startup', title: 'Startup' }, { id: 'Other', title: 'Other' },
+  { id: 'Startup', title: 'Startup' }, { id: 'Other', title: 'Other' }
 ];
 
 const STATES = [
@@ -77,8 +53,17 @@ const STATES = [
   { code: 'RJ', name: 'Rajasthan' }, { code: 'SK', name: 'Sikkim' },
   { code: 'TN', name: 'Tamil Nadu' }, { code: 'TG', name: 'Telangana' },
   { code: 'TR', name: 'Tripura' }, { code: 'UP', name: 'Uttar Pradesh' },
-  { code: 'UT', name: 'Uttarakhand' }, { code: 'WB', name: 'West Bengal' },
+  { code: 'UT', name: 'Uttarakhand' }, { code: 'WB', name: 'West Bengal' }
 ];
+
+const fetchDistrictsFromBackend = async (stateCode: string): Promise<{code: string, name: string}[]> => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const res = await fetch(`${baseUrl}/api/locations/districts?state=${stateCode}`);
+    if (!res.ok) throw new Error('Failed to fetch districts');
+    return await res.json();
+  } catch (error) { console.error(error); return []; }
+};
 
 interface DynamicQuestion {
   id: string;
@@ -88,160 +73,132 @@ interface DynamicQuestion {
   options?: { label: string; value: string }[];
 }
 
-const apiBase = () => import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
-const fetchDistrictsFromBackend = async (stateCode: string): Promise<{ code: string; name: string }[]> => {
-  const res = await fetch(`${apiBase()}/api/locations/districts?state=${encodeURIComponent(stateCode)}`);
-  if (!res.ok) throw new Error('District data could not be loaded from the verified location source.');
-  return await res.json();
-};
-
 const fetchDynamicQuestions = async (data: any): Promise<DynamicQuestion[]> => {
-  const res = await fetch(`${apiBase()}/api/schemes/dynamic-questions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Additional eligibility questions could not be loaded.');
-  return await res.json();
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const res = await fetch(`${baseUrl}/api/schemes/dynamic-questions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to fetch dynamic questions');
+    return await res.json();
+  } catch (error) { console.error(error); return []; }
 };
 
-const TaxonomySelector = ({ value, onChange }: { value: any; onChange: (val: any) => void }) => (
+const TaxonomySelector = ({ value, onChange }: { value: any, onChange: (val: any) => void }) => (
   <div className="space-y-4">
-    <select
-      value={value.activity || ''}
-      onChange={(e) => onChange({ ...value, activity: e.target.value })}
-      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[16px] font-semibold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
-    >
+    <select value={value.activity} onChange={(e) => onChange({ ...value, activity: e.target.value })}
+      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[16px] font-bold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary">
       <option value="">Select an activity</option>
-      {ACTIVITY_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+      {ACTIVITY_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
     </select>
     {value.activity === 'Other' && (
-      <input
-        type="text"
-        placeholder="Please specify"
-        value={value.customActivityText || ''}
+      <input type="text" placeholder="Please specify" value={value.customActivityText || ''}
         onChange={(e) => onChange({ ...value, customActivityText: e.target.value })}
-        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[16px] font-semibold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
-      />
+        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[16px] font-bold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
     )}
   </div>
 );
 
 export function FindScheme() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('intro');
   const [formData, setFormData] = useState<any>({
-    purpose: '', category: '', dob: '', income: '', state: '', stateName: '', district: '', districtName: '',
-    beneficiaryType: 'Myself', dynamicAnswers: {},
+    purpose: '', category: '', dob: '', income: '', state: '', stateName: '',
+    district: '', districtName: '', beneficiaryType: 'Myself', dynamicAnswers: {}
   });
-  const [availableDistricts, setAvailableDistricts] = useState<{ code: string; name: string }[]>([]);
+  const [availableDistricts, setAvailableDistricts] = useState<{code: string, name: string}[]>([]);
   const [dynamicQuestions, setDynamicQuestions] = useState<DynamicQuestion[]>([]);
   const [isFetchingQuestions, setIsFetchingQuestions] = useState(false);
-  const [isLoadingDistricts, setIsLoadingDistricts] = useState(false);
-  const [locationError, setLocationError] = useState('');
   const [schemeResults, setSchemeResults] = useState<any>(null);
-  const [schemeError, setSchemeError] = useState('');
-  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [expandedNotEligible, setExpandedNotEligible] = useState<Record<string, boolean>>({});
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showOptionalAttributes, setShowOptionalAttributes] = useState(false);
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(false);
+  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [expandedMoreInfo, setExpandedMoreInfo] = useState(false);
   const [expandedAlternative, setExpandedAlternative] = useState(false);
-  const [showOptionalAttributes, setShowOptionalAttributes] = useState(false);
-
-  useEffect(() => {
-    const state = window.history.state;
-    if (!state?.arthSetuStep) {
-      window.history.replaceState({ ...(state || {}), arthSetuStep: 'intro' }, '');
-    }
-    const onPopState = (event: PopStateEvent) => {
-      const previousStep = event.state?.arthSetuStep as Step | undefined;
-      if (previousStep) {
-        setStep(previousStep);
-        window.scrollTo(0, 0);
-      }
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  const goToStep = (nextStep: Step, push = true) => {
-    if (push) window.history.pushState({ ...(window.history.state || {}), arthSetuStep: nextStep }, '');
-    else window.history.replaceState({ ...(window.history.state || {}), arthSetuStep: nextStep }, '');
-    setStep(nextStep);
-    window.scrollTo(0, 0);
-  };
-
-  const handleBack = () => {
-    if (step === 'intro') return;
-    window.history.back();
-  };
-
-  const getStepNumber = () => {
-    switch (step) {
-      case 'purpose': return 1;
-      case 'about': return 2;
-      case 'financial': return 3;
-      case 'location': return 4;
-      case 'specifics': return 5;
-      case 'review': return 6;
-      default: return 0;
-    }
-  };
+  const [stepHistory, setStepHistory] = useState<Step[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentFilter, setCurrentFilter] = useState("All");
+  const ITEMS_PER_PAGE = 10;
 
   const handleStateChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
-    const name = STATES.find((s) => s.code === code)?.name || '';
-    setFormData((prev: any) => ({ ...prev, state: code, stateName: name, district: '', districtName: '', dynamicAnswers: {} }));
-    setAvailableDistricts([]);
-    setLocationError('');
-    if (!code) return;
+    const name = STATES.find(s => s.code === code)?.name || '';
+    setFormData({ ...formData, state: code, stateName: name, district: '', districtName: '', dynamicAnswers: {} });
     setIsLoadingDistricts(true);
-    try {
-      const districts = await fetchDistrictsFromBackend(code);
-      setAvailableDistricts(districts);
-      if (districts.length === 0) setLocationError('Verified district data is not available for this State/UT yet.');
-    } catch (error: any) {
-      setLocationError(error?.message || 'Verified district data could not be loaded.');
-    } finally {
-      setIsLoadingDistricts(false);
-    }
+    const districts = await fetchDistrictsFromBackend(code);
+    setIsLoadingDistricts(false);
+    setAvailableDistricts(districts);
   };
 
   const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const code = e.target.value;
-    const name = availableDistricts.find((d) => d.code === code)?.name || '';
-    setFormData((prev: any) => ({ ...prev, district: code, districtName: name, dynamicAnswers: {} }));
+    const name = availableDistricts.find(d => d.code === code)?.name || '';
+    setFormData({ ...formData, district: code, districtName: name, dynamicAnswers: {} });
+  };
+
+  const getStepNumber = () => {
+    switch (step) {
+      case 'purpose': return 1; case 'about': return 2; case 'financial': return 3;
+      case 'location': return 4; case 'specifics': return 5; case 'review': return 6;
+      default: return 0;
+    }
+  };
+
+  const handleNext = (nextStep: Step) => { window.scrollTo(0, 0); setStepHistory(prev => [...prev, step]); setStep(nextStep); };
+
+  const handleBack = () => {
+    if (step === 'purpose') {
+      if (window.history.state && window.history.state.idx > 0) { navigate(-1); } else { navigate('/'); }
+      return;
+    }
+    setStepHistory(prev => {
+      let newHistory = [...prev];
+      let previousStep = newHistory.pop();
+      while (previousStep === 'processing' && newHistory.length > 0) { previousStep = newHistory.pop(); }
+      if (previousStep) { setStep(previousStep); window.scrollTo(0, 0); }
+      return newHistory;
+    });
+  };
+
+  const toggleExpanded = (id: string, section: string) => {
+    if (section === 'notEligible') setExpandedNotEligible(prev => ({ ...prev, [id]: !prev[id] }));
+    else if (section === 'details') setExpandedDetails(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const renderIntro = () => (
     <div className="max-w-2xl mx-auto text-center mt-12 mb-24 px-4">
       <div className="inline-flex items-center gap-2 bg-soft-teal text-secondary px-3 py-1.5 rounded-full font-semibold text-xs tracking-wide mb-6">SMART SCHEME RECOMMENDER</div>
-      <h1 className="text-3xl md:text-5xl font-extrabold text-primary leading-tight mb-6">Find Government Schemes That Actually Match You</h1>
-      <p className="text-lg text-text-muted leading-relaxed mb-8">Answer only the details needed by verified Government eligibility rules. ArthSetu will show source-backed schemes and the correct official application route.</p>
+      <h1 className="text-3xl md:text-5xl font-extrabold text-primary leading-tight mb-6">Let's Find the Right Scheme for You</h1>
+      <p className="text-lg text-text-muted leading-relaxed mb-8">Answer a few simple questions about your need. ArthSetu will check applicable scheme conditions and show the most suitable options with clear reasons.</p>
       <div className="flex flex-col items-center gap-3 mb-10">
-        <span className="text-[14px] font-semibold text-text-main bg-gray-100 px-4 py-2 rounded-full">Usually takes a few minutes</span>
-        <div className="flex items-center gap-1.5 text-text-muted text-[13px]"><ShieldCheck className="w-4 h-4 text-secondary" /><span>No Aadhaar or document upload required for discovery</span></div>
+        <span className="text-[14px] font-semibold text-text-main bg-gray-100 px-4 py-2 rounded-full">Takes about 2 minutes</span>
+        <div className="flex items-center gap-1.5 text-text-muted text-[13px]"><ShieldCheck className="w-4 h-4 text-secondary" /><span>No documents required at this stage</span></div>
       </div>
-      <button onClick={() => goToStep('purpose')} className="bg-primary text-white px-10 py-4 rounded-[12px] font-bold text-[16px] hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg transition-all flex items-center justify-center gap-2 mx-auto w-full sm:w-auto">Start <ArrowRight className="w-5 h-5" /></button>
+      <button onClick={() => handleNext('purpose')} className="bg-primary text-white px-10 py-4 rounded-[12px] font-bold text-[16px] hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg transition-all flex items-center justify-center gap-2 mx-auto w-full sm:w-auto">Start <ArrowRight className="w-5 h-5" /></button>
     </div>
   );
 
   const renderPurpose = () => (
-    <div className="max-w-4xl mx-auto mt-8 mb-24 px-4">
-      <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-2 text-center">What do you need support for?</h2>
-      <p className="text-center text-text-muted text-sm mb-8">This only narrows relevant scheme families. Final eligibility comes from official scheme rules.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="max-w-3xl mx-auto mt-8 mb-24 px-4">
+      <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">What do you need support for?</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {PURPOSES.map((item) => (
-          <button key={item.id} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, purpose: item.id }))}
-            className={`p-5 rounded-[18px] border-2 text-left cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${formData.purpose === item.id ? 'border-secondary bg-soft-teal' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+          <div key={item.id} onClick={() => setFormData({ ...formData, purpose: item.id })}
+            className={`p-5 rounded-[16px] border-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${formData.purpose === item.id ? 'border-secondary bg-soft-teal' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
             <item.icon className={`w-6 h-6 mb-3 ${formData.purpose === item.id ? 'text-secondary' : 'text-text-muted'}`} />
             <div className={`font-bold text-[14px] mb-1 ${formData.purpose === item.id ? 'text-secondary' : 'text-primary'}`}>{item.title}</div>
             <div className="text-[12px] text-text-muted leading-relaxed">{item.desc}</div>
-          </button>
+          </div>
         ))}
       </div>
-      <div className="mt-10 flex justify-end">
-        <button disabled={!formData.purpose} onClick={() => goToStep('about')}
-          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 w-full sm:w-auto ${formData.purpose ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+      {formData.purpose === 'Other' && (
+        <input type="text" placeholder="Please describe your need" value={formData.customPurposeText || ''} onChange={(e) => setFormData({ ...formData, customPurposeText: e.target.value })} className="w-full bg-white border border-gray-200 rounded-xl py-3.5 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary mb-6" />
+      )}
+      <div className="mt-12 flex justify-end">
+        <button disabled={!formData.purpose || (formData.purpose === 'Other' && !formData.customPurposeText?.trim())} onClick={() => handleNext('about')}
+          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 w-full sm:w-auto ${(formData.purpose && (formData.purpose !== 'Other' || formData.customPurposeText?.trim())) ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
           Continue <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -249,97 +206,108 @@ export function FindScheme() {
   );
 
   const renderAbout = () => {
-    const dob = formData.dob ? new Date(`${formData.dob}T00:00:00`) : null;
-    const isValidDob = !!dob && !Number.isNaN(dob.getTime()) && dob <= new Date();
-    const categories = [
-      { id: 'SC', label: 'Scheduled Caste (SC)' },
-      { id: 'ST', label: 'Scheduled Tribe (ST)' },
-      { id: 'OBC', label: 'Other Backward Class (OBC)' },
-      { id: 'General', label: 'General / Open Category' },
+    const dob = formData.dob ? new Date(formData.dob) : null;
+    const age = dob ? Math.floor((Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : null;
+    const isValidAge = age !== null && age >= 18 && age <= 70;
+    const CATEGORIES = [
+      { id: 'SC', label: 'Scheduled Caste (SC)' }, { id: 'ST', label: 'Scheduled Tribe (ST)' },
+      { id: 'OBC', label: 'Other Backward Class (OBC)' }, { id: 'General', label: 'General / Open Category' },
+      { id: 'EWS', label: 'Economically Weaker Section (EWS)' }, { id: 'Minority', label: 'Minority Community' },
     ];
-    const canContinue = !!formData.beneficiaryType && isValidDob && !!formData.gender && !!formData.category;
-
     return (
       <div className="max-w-2xl mx-auto mt-8 mb-24 px-4">
         <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">Tell us about yourself</h2>
-        <div className="bg-white rounded-[22px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-7">
+        <div className="bg-white rounded-[20px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-6">
           <div>
-            <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-3">I am applying for</label>
+            <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">I am applying for</label>
             <div className="flex flex-wrap gap-2">
-              {['Myself', 'Dependent / Child', 'Family Member'].map((val) => (
-                <button key={val} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, beneficiaryType: val }))}
+              {['Myself', 'Business', 'Family Member'].map(val => (
+                <button key={val} onClick={() => setFormData({ ...formData, beneficiaryType: val })}
                   className={`px-4 py-2.5 rounded-full text-[13px] font-semibold border transition-all ${formData.beneficiaryType === val ? 'bg-secondary text-white border-secondary shadow-sm' : 'bg-white text-text-muted border-gray-200 hover:border-gray-300'}`}>{val}</button>
               ))}
             </div>
           </div>
-
           <div>
             <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Date of Birth</label>
-            <input type="date" value={formData.dob} max={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, dob: e.target.value }))}
+            <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+              max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
               className="w-full sm:w-1/2 bg-white border border-gray-200 rounded-xl py-3 px-4 text-[14px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
+            {formData.dob && !isValidAge && <p className="text-[12px] text-red-500 mt-1">Age must be between 18 and 70 years.</p>}
           </div>
-
           <div>
             <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Gender</label>
             <div className="flex flex-wrap gap-2">
-              {['Male', 'Female', 'Other'].map((val) => (
-                <button key={val} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, gender: val }))}
+              {['Male', 'Female', 'Other'].map(val => (
+                <button key={val} onClick={() => setFormData({ ...formData, gender: val })}
                   className={`px-4 py-2.5 rounded-full text-[13px] font-semibold border transition-all ${formData.gender === val ? 'bg-secondary text-white border-secondary shadow-sm' : 'bg-white text-text-muted border-gray-200 hover:border-gray-300'}`}>{val}</button>
               ))}
             </div>
           </div>
-
           <div>
             <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Social Category</label>
             <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => (
-                <button key={cat.id} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, category: cat.id }))}
+              {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map(cat => (
+                <button key={cat.id} onClick={() => setFormData({ ...formData, category: cat.id })}
                   className={`px-4 py-2.5 rounded-full text-[13px] font-semibold border transition-all ${formData.category === cat.id ? 'bg-secondary text-white border-secondary shadow-sm' : 'bg-white text-text-muted border-gray-200 hover:border-gray-300'}`}>{cat.label}</button>
               ))}
+              {!showAllCategories && <button onClick={() => setShowAllCategories(true)} className="px-4 py-2.5 rounded-full text-[13px] font-semibold border border-dashed border-gray-300 text-text-muted hover:border-gray-400 transition-all">+ More</button>}
             </div>
           </div>
-
           <div>
-            <button type="button" onClick={() => setShowOptionalAttributes((v) => !v)} className="flex items-center gap-2 text-[13px] font-semibold text-secondary hover:text-primary transition-colors">
+            <button onClick={() => setShowOptionalAttributes(!showOptionalAttributes)} className="flex items-center gap-2 text-[13px] font-semibold text-secondary hover:text-primary transition-colors">
               {showOptionalAttributes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              Additional profile details — only use when relevant to a scheme
+              Optional: Additional profile details (may unlock more schemes)
             </button>
           </div>
-
           {showOptionalAttributes && (
-            <div className="flex flex-col gap-5 pt-4 border-t border-gray-100">
+            <div className="flex flex-col gap-5 pt-2 border-t border-gray-100">
+              {formData.category === 'Minority' && (
+                <div>
+                  <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Minority Community</label>
+                  <select value={formData.minorityCommunity} onChange={(e) => setFormData({ ...formData, minorityCommunity: e.target.value })} className="w-full sm:w-1/2 bg-white border border-gray-200 rounded-xl py-3 px-4 text-[14px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none">
+                    <option value="" disabled>Select Community</option>
+                    <option value="Muslim">Muslim</option><option value="Christian">Christian</option>
+                    <option value="Sikh">Sikh</option><option value="Buddhist">Buddhist</option>
+                    <option value="Parsi">Parsi</option><option value="Jain">Jain</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Person with Disability (PwD)</label>
-                <div className="flex gap-2">
-                  {['Yes', 'No'].map((val) => {
-                    const yes = val === 'Yes';
-                    return <button key={val} type="button" onClick={() => setFormData((prev: any) => {
-                      const dynamicAnswers = { ...prev.dynamicAnswers };
-                      if (!yes) delete dynamicAnswers.DisabilityPercentage;
-                      return { ...prev, isPwD: yes, dynamicAnswers };
-                    })} className={`px-5 py-2.5 rounded-full text-[13px] font-semibold border transition-all ${formData.isPwD === yes ? 'bg-secondary text-white border-secondary' : 'bg-white text-text-muted border-gray-200'}`}>{val}</button>;
-                  })}
+                <div className="flex flex-wrap gap-2">
+                  {['Yes', 'No'].map(val => (
+                    <button key={val} onClick={() => {
+                      const isYes = val === 'Yes';
+                      setFormData((prev: any) => {
+                        const newDynamic = { ...prev.dynamicAnswers };
+                        if (!isYes) delete newDynamic.DisabilityPercentage;
+                        return { ...prev, isPwD: isYes, dynamicAnswers: newDynamic };
+                      });
+                    }}
+                      className={`px-4 py-2.5 rounded-full text-[13px] font-semibold border transition-all ${formData.isPwD === (val === 'Yes') ? 'bg-secondary text-white border-secondary shadow-sm' : 'bg-white text-text-muted border-gray-200 hover:border-gray-300'}`}>{val}</button>
+                  ))}
                 </div>
               </div>
               <div>
-                <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">EWS</label>
-                <div className="flex gap-2">{['Yes', 'No'].map((val) => <button key={val} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, isEws: val === 'Yes' }))} className={`px-5 py-2.5 rounded-full text-[13px] font-semibold border ${formData.isEws === (val === 'Yes') ? 'bg-secondary text-white border-secondary' : 'bg-white text-text-muted border-gray-200'}`}>{val}</button>)}</div>
-              </div>
-              <div>
-                <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Minority Community</label>
-                <div className="flex gap-2">{['Yes', 'No'].map((val) => <button key={val} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, isMinority: val === 'Yes' }))} className={`px-5 py-2.5 rounded-full text-[13px] font-semibold border ${formData.isMinority === (val === 'Yes') ? 'bg-secondary text-white border-secondary' : 'bg-white text-text-muted border-gray-200'}`}>{val}</button>)}</div>
-              </div>
-              <div>
                 <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Ex-Serviceman</label>
-                <div className="flex gap-2">{['Yes', 'No'].map((val) => <button key={val} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, isExServiceman: val === 'Yes' }))} className={`px-5 py-2.5 rounded-full text-[13px] font-semibold border ${formData.isExServiceman === (val === 'Yes') ? 'bg-secondary text-white border-secondary' : 'bg-white text-text-muted border-gray-200'}`}>{val}</button>)}</div>
+                <div className="flex flex-wrap gap-2">
+                  {['Yes', 'No'].map(val => (
+                    <button key={val} onClick={() => setFormData((prev: any) => ({ ...prev, isExServiceman: val === 'Yes' }))}
+                      className={`px-4 py-2.5 rounded-full text-[13px] font-semibold border transition-all ${formData.isExServiceman === (val === 'Yes') ? 'bg-secondary text-white border-secondary shadow-sm' : 'bg-white text-text-muted border-gray-200 hover:border-gray-300'}`}>{val}</button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
-        <div className="mt-8 flex justify-end">
-          <button disabled={!canContinue} onClick={() => goToStep('financial')}
-            className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center gap-2 ${canContinue ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+        <div className="mt-8 flex flex-col items-end gap-3">
+          {(!formData.beneficiaryType || !isValidAge || !formData.gender || !formData.category) && (
+            <div className="text-[13px] text-red-500 font-medium bg-red-50 px-4 py-2 rounded-lg border border-red-100 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />Please fill all required fields before continuing.
+            </div>
+          )}
+          <button disabled={!formData.beneficiaryType || !isValidAge || !formData.gender || !formData.category} onClick={() => handleNext('financial')}
+            className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${formData.beneficiaryType && isValidAge && formData.gender && formData.category ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
             Continue <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -350,20 +318,22 @@ export function FindScheme() {
   const renderFinancial = () => (
     <div className="max-w-2xl mx-auto mt-8 mb-24 px-4">
       <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">Financial Information</h2>
-      <div className="bg-white rounded-[22px] p-6 md:p-8 border border-gray-100 shadow-sm">
-        <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Annual Family Income (₹)</label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[16px] font-bold text-text-muted">₹</span>
-          <input type="text" placeholder="e.g. 300000"
-            value={formData.income ? new Intl.NumberFormat('en-IN').format(Number(String(formData.income).replace(/\D/g, ''))) : ''}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, income: e.target.value.replace(/\D/g, '') }))}
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-8 pr-4 text-[16px] font-bold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
+      <div className="bg-white rounded-[20px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-6">
+        <div>
+          <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">Annual Family Income (₹)</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[16px] font-bold text-text-muted">₹</span>
+            <input type="text" placeholder="e.g. 300000"
+              value={formData.income ? new Intl.NumberFormat('en-IN').format(Number(String(formData.income).replace(/\D/g, ''))) : ''}
+              onChange={(e) => { const rawValue = e.target.value.replace(/\D/g, ''); setFormData({ ...formData, income: rawValue }); }}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-8 pr-4 text-[16px] font-bold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
+          </div>
+          <p className="text-[12px] text-text-muted mt-1.5 flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Total household income per year</p>
         </div>
-        <p className="text-[12px] text-text-muted mt-2 flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Used only where an official scheme has an income rule.</p>
       </div>
-      <div className="mt-10 flex justify-end">
-        <button disabled={!formData.income} onClick={() => goToStep('location')}
-          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center gap-2 ${formData.income ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+      <div className="mt-10 flex justify-end items-center">
+        <button disabled={!formData.income} onClick={() => handleNext('location')}
+          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${formData.income ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
           Continue <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -373,251 +343,394 @@ export function FindScheme() {
   const renderLocation = () => (
     <div className="max-w-2xl mx-auto mt-8 mb-24 px-4">
       <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">Where are you located?</h2>
-      <div className="bg-white rounded-[22px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-6">
+      <div className="bg-white rounded-[20px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-6">
         <div>
           <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">State / UT</label>
           <select value={formData.state} onChange={handleStateChange} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none">
-            <option value="">Select State / UT</option>
-            {STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+            <option value="">Select state</option>
+            {STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">District</label>
-          <select value={formData.district} onChange={handleDistrictChange} disabled={!formData.state || isLoadingDistricts || availableDistricts.length === 0}
+          <select value={formData.district} onChange={handleDistrictChange} disabled={!formData.state || isLoadingDistricts}
             className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none disabled:opacity-50 disabled:cursor-not-allowed">
-            <option value="">{isLoadingDistricts ? 'Loading verified districts…' : 'Select district'}</option>
-            {availableDistricts.map((district) => <option key={district.code} value={district.code}>{district.name}</option>)}
+            <option value="" disabled>{isLoadingDistricts ? 'Loading districts...' : 'Select district'}</option>
+            {availableDistricts.map(district => <option key={district.code} value={district.code}>{district.name}</option>)}
           </select>
-          {locationError && <div className="mt-3 flex items-start gap-2 text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2"><AlertCircle className="w-4 h-4 mt-0.5" />{locationError}</div>}
         </div>
       </div>
-      <div className="mt-10 flex justify-end">
-        <button disabled={!formData.state || !formData.district || isFetchingQuestions} onClick={async () => {
-          setIsFetchingQuestions(true);
-          setSchemeError('');
-          try {
+      <div className="mt-10 flex justify-end items-center">
+        <button disabled={!formData.state || !formData.district || isFetchingQuestions}
+          onClick={async () => {
+            setIsFetchingQuestions(true);
             const questions = await fetchDynamicQuestions(formData);
-            setDynamicQuestions(questions);
-            goToStep(questions.length > 0 ? 'specifics' : 'review');
-          } catch (error: any) {
-            setSchemeError(error?.message || 'Eligibility questions could not be loaded.');
-          } finally {
             setIsFetchingQuestions(false);
-          }
-        }} className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center gap-2 ${formData.state && formData.district && !isFetchingQuestions ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
-          {isFetchingQuestions ? 'Checking rules…' : <>Continue <ArrowRight className="w-5 h-5" /></>}
+            if (questions.length > 0) { setDynamicQuestions(questions); handleNext('specifics'); }
+            else { handleNext('review'); }
+          }}
+          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${formData.state && formData.district && !isFetchingQuestions ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+          {isFetchingQuestions ? 'Loading...' : <>Continue <ArrowRight className="w-5 h-5" /></>}
         </button>
       </div>
-      {schemeError && <div className="mt-4 text-right text-sm text-red-600">{schemeError}</div>}
     </div>
   );
 
   const renderSpecifics = () => {
+    // isPwD can be known from:
+    // 1. formData.isPwD (boolean) — set on the About step
+    // 2. formData.dynamicAnswers.IsPwD (string "true"/"false") — answered as a dynamic question on this step
     const isPwDNo = formData.isPwD === false || formData.dynamicAnswers?.IsPwD === 'false';
-    const activeQuestions = dynamicQuestions.filter((q) => !(q.id === 'DisabilityPercentage' && isPwDNo));
-    const isComplete = activeQuestions.every((q) => {
+
+    // Defensive frontend filter: never render DisabilityPercentage when PwD is No from either source
+    const activeQuestions = dynamicQuestions.filter(q => {
+      if (q.id === 'DisabilityPercentage' && isPwDNo) return false;
+      return true;
+    });
+
+    // isComplete is computed ONLY over currently visible active questions
+    const isComplete = activeQuestions.every(q => {
       const val = formData.dynamicAnswers[q.id];
-      if (q.type === 'taxonomy') return !!val?.activity && (val.activity !== 'Other' || !!val.customActivityText?.trim());
+      if (q.type === 'taxonomy') return val && val.activity && (val.activity !== 'Other' || val.customActivityText);
       if (q.id === 'DisabilityPercentage') {
         const num = Number(val);
-        return val !== '' && val != null && !Number.isNaN(num) && num >= 0 && num <= 100;
+        return !!val && !isNaN(num) && num >= 0 && num <= 100;
       }
-      return val !== '' && val != null;
+      return !!val;
     });
 
     return (
       <div className="max-w-2xl mx-auto mt-8 mb-24 px-4">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-2 text-center">Additional Details</h2>
-        <p className="text-center text-sm text-text-muted mb-8">Only questions required by unresolved mandatory rules in your current verified scheme candidates are shown.</p>
-        <div className="bg-white rounded-[22px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-7">
-          {activeQuestions.length === 0 ? <p className="text-center text-text-muted py-6">No additional eligibility details are required.</p> : activeQuestions.map((q) => (
-            <div key={q.id}>
-              <label className="block text-[15px] font-bold text-primary mb-3">{q.label}</label>
-              {q.type === 'single_choice' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{q.options?.map((opt) => (
-                <button key={opt.value} type="button" onClick={() => {
-                  if (q.id === 'IsPwD') {
-                    const isNo = opt.value === 'false';
-                    const dynamicAnswers = { ...formData.dynamicAnswers, IsPwD: opt.value };
-                    if (isNo) delete dynamicAnswers.DisabilityPercentage;
-                    setFormData((prev: any) => ({ ...prev, isPwD: !isNo, dynamicAnswers }));
-                  } else {
-                    setFormData((prev: any) => ({ ...prev, dynamicAnswers: { ...prev.dynamicAnswers, [q.id]: opt.value } }));
-                  }
-                }} className={`py-3 px-4 rounded-xl font-bold text-[14px] border-2 transition-all text-left ${formData.dynamicAnswers[q.id] === opt.value ? 'border-secondary bg-soft-teal text-secondary' : 'border-gray-100 bg-white text-text-muted hover:border-gray-200'}`}>{opt.label}</button>
-              ))}</div>}
-              {q.type === 'yes_no' && <div className="flex gap-3">{['Yes', 'No'].map((opt) => <button key={opt} type="button" onClick={() => setFormData((prev: any) => ({ ...prev, dynamicAnswers: { ...prev.dynamicAnswers, [q.id]: opt } }))} className={`flex-1 py-3 px-6 rounded-xl font-bold text-[14px] border-2 ${formData.dynamicAnswers[q.id] === opt ? 'border-secondary bg-soft-teal text-secondary' : 'border-gray-100 text-text-muted'}`}>{opt}</button>)}</div>}
-              {q.type === 'text' && <input type="text" value={formData.dynamicAnswers[q.id] || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, dynamicAnswers: { ...prev.dynamicAnswers, [q.id]: e.target.value } }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary" />}
-              {q.type === 'numeric' && <input type="number" min={q.id === 'DisabilityPercentage' ? 0 : undefined} max={q.id === 'DisabilityPercentage' ? 100 : undefined} value={formData.dynamicAnswers[q.id] || ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, dynamicAnswers: { ...prev.dynamicAnswers, [q.id]: e.target.value } }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary" />}
-              {q.type === 'currency' && <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-text-muted">₹</span><input type="text" value={formData.dynamicAnswers[q.id] ? new Intl.NumberFormat('en-IN').format(Number(formData.dynamicAnswers[q.id])) : ''} onChange={(e) => setFormData((prev: any) => ({ ...prev, dynamicAnswers: { ...prev.dynamicAnswers, [q.id]: e.target.value.replace(/\D/g, '') } }))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-8 pr-4 text-[16px] font-bold text-primary focus:outline-none focus:border-secondary" /></div>}
-              {q.type === 'taxonomy' && <TaxonomySelector value={formData.dynamicAnswers[q.id] || { activity: '', customActivityText: '' }} onChange={(val) => setFormData((prev: any) => ({ ...prev, dynamicAnswers: { ...prev.dynamicAnswers, [q.id]: val } }))} />}
-              {q.helpText && <div className="mt-2 text-[12px] text-text-muted flex items-start gap-1.5"><Info className="w-4 h-4 mt-0.5 text-blue-400" /><span>{q.helpText}</span></div>}
-            </div>
-          ))}
+        <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">Additional Details</h2>
+        <div className="bg-white rounded-[20px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-6">
+          {activeQuestions.length === 0 ? (
+            <div className="text-center py-8"><p className="text-[15px] text-text-muted">No specific details required for this purpose yet.</p></div>
+          ) : (
+            activeQuestions.map(q => (
+              <div key={q.id} className="relative z-20">
+                <label className="block text-[15px] font-bold text-primary mb-3">{q.label}</label>
+                {q.type === 'single_choice' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {q.options?.map(opt => (
+                      <button key={opt.value}
+                        onClick={() => {
+                          if (q.id === 'IsPwD') {
+                            // Sync dynamic IsPwD answer → top-level formData.isPwD boolean
+                            // and clear stale DisabilityPercentage if selecting No
+                            const isNo = opt.value === 'false';
+                            const newDynamic = { ...formData.dynamicAnswers, IsPwD: opt.value };
+                            if (isNo) delete newDynamic.DisabilityPercentage;
+                            setFormData({ ...formData, isPwD: !isNo, dynamicAnswers: newDynamic });
+                          } else {
+                            setFormData({ ...formData, dynamicAnswers: { ...formData.dynamicAnswers, [q.id]: opt.value } });
+                          }
+                        }}
+                        className={`py-3 px-4 rounded-xl font-bold text-[14px] border-2 transition-all text-left ${formData.dynamicAnswers[q.id] === opt.value ? 'border-secondary bg-soft-teal text-secondary' : 'border-gray-100 bg-white text-text-muted hover:border-gray-200'}`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {q.type === 'yes_no' && (
+                  <div className="flex gap-3">
+                    {['Yes', 'No'].map(opt => (
+                      <button key={opt} onClick={() => setFormData({ ...formData, dynamicAnswers: { ...formData.dynamicAnswers, [q.id]: opt } })}
+                        className={`flex-1 py-3 px-6 rounded-xl font-bold text-[14px] border-2 transition-all text-center ${formData.dynamicAnswers[q.id] === opt ? 'border-secondary bg-soft-teal text-secondary' : 'border-gray-100 bg-white text-text-muted hover:border-gray-200'}`}>{opt}</button>
+                    ))}
+                  </div>
+                )}
+                {q.type === 'text' && (
+                  <input type="text" value={formData.dynamicAnswers[q.id] || ''}
+                    onChange={(e) => setFormData({ ...formData, dynamicAnswers: { ...formData.dynamicAnswers, [q.id]: e.target.value } })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
+                )}
+                {q.type === 'numeric' && (
+                  <input type="number"
+                    min={q.id === 'DisabilityPercentage' ? 0 : undefined}
+                    max={q.id === 'DisabilityPercentage' ? 100 : undefined}
+                    value={formData.dynamicAnswers[q.id] || ''}
+                    onChange={(e) => setFormData({ ...formData, dynamicAnswers: { ...formData.dynamicAnswers, [q.id]: e.target.value } })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
+                )}
+                {q.type === 'currency' && (
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[16px] font-bold text-text-muted">₹</span>
+                    <input type="text" placeholder="e.g. 50000"
+                      value={formData.dynamicAnswers[q.id] ? new Intl.NumberFormat('en-IN').format(Number(formData.dynamicAnswers[q.id])) : ''}
+                      onChange={(e) => { const rawValue = e.target.value.replace(/\D/g, ''); setFormData({ ...formData, dynamicAnswers: { ...formData.dynamicAnswers, [q.id]: rawValue } }); }}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-8 pr-4 text-[16px] font-bold text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" />
+                  </div>
+                )}
+                {q.type === 'taxonomy' && (
+                  <TaxonomySelector value={formData.dynamicAnswers[q.id] || { activity: '', customActivityText: '' }}
+                    onChange={(val) => setFormData({ ...formData, dynamicAnswers: { ...formData.dynamicAnswers, [q.id]: val } })} />
+                )}
+                {q.helpText && (
+                  <div className="mt-2 text-[12px] text-text-muted flex items-start gap-1.5 leading-relaxed">
+                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-400" /><p>{q.helpText}</p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
-        <div className="mt-10 flex justify-end"><button disabled={!isComplete} onClick={() => goToStep('review')} className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center gap-2 ${isComplete ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>Continue <ArrowRight className="w-5 h-5" /></button></div>
+        <div className="mt-10 flex justify-end items-center">
+          <button disabled={!isComplete} onClick={() => handleNext('review')}
+            className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${isComplete ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+            Continue <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     );
   };
 
-  const activeReviewQuestions = dynamicQuestions.filter((q) => !(q.id === 'DisabilityPercentage' && formData.isPwD === false));
-
   const renderReview = () => (
     <div className="max-w-2xl mx-auto mt-8 mb-24 px-4">
       <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">Review Your Profile</h2>
-      <div className="bg-white rounded-[22px] border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
-        <div className="px-6 py-5 flex justify-between gap-4"><span className="font-bold text-primary">Purpose</span><span className="text-right font-semibold text-primary">{PURPOSES.find((p) => p.id === formData.purpose)?.title}</span></div>
-        <div className="px-6 py-5 flex justify-between gap-4"><span className="font-bold text-primary">Beneficiary</span><span className="text-right font-semibold text-primary">{formData.beneficiaryType}</span></div>
-        <div className="px-6 py-5 flex justify-between gap-4"><span className="font-bold text-primary">Profile</span><span className="text-right font-semibold text-primary">{formData.gender} · {formData.category}<br /><span className="text-xs text-text-muted">DOB: {formData.dob}</span></span></div>
-        <div className="px-6 py-5 flex justify-between gap-4"><span className="font-bold text-primary">Income</span><span className="font-semibold text-primary">₹{new Intl.NumberFormat('en-IN').format(Number(formData.income || 0))}</span></div>
-        <div className="px-6 py-5 flex justify-between gap-4"><span className="font-bold text-primary">Location</span><span className="text-right font-semibold text-primary">{formData.districtName}, {formData.stateName}</span></div>
-        {formData.isPwD !== undefined && <div className="px-6 py-5 flex justify-between gap-4"><span className="font-bold text-primary">Person with Disability (PwD)</span><span className="font-semibold text-primary">{formData.isPwD ? 'Yes' : 'No'}</span></div>}
-        {activeReviewQuestions.length > 0 && <div className="px-6 py-5">
-          <div className="flex justify-between mb-4"><span className="font-bold text-primary">Additional Details</span><button type="button" onClick={() => goToStep('specifics')} className="text-secondary font-semibold text-sm">Edit</button></div>
-          <div className="space-y-3">{activeReviewQuestions.map((q) => {
-            let displayValue: any = formData.dynamicAnswers[q.id];
-            if (q.id === 'IsPwD') displayValue = formData.isPwD === true ? 'Yes' : formData.isPwD === false ? 'No' : displayValue;
-            if (q.type === 'taxonomy' && displayValue) displayValue = displayValue.activity === 'Other' ? displayValue.customActivityText : ACTIVITY_CATEGORIES.find((c) => c.id === displayValue.activity)?.title || displayValue.activity;
-            if (q.type === 'currency' && displayValue) displayValue = `₹${new Intl.NumberFormat('en-IN').format(Number(displayValue))}`;
-            if (!displayValue && q.id === 'DisabilityPercentage' && !formData.isPwD) return null;
-            return <div key={q.id}><div className="text-[11px] uppercase tracking-wide font-bold text-text-muted">{q.label}</div><div className="font-semibold text-primary">{displayValue || 'Not provided'}</div></div>;
-          })}</div>
-        </div>}
+      <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
+          <div className="text-[14px] font-bold text-primary">Purpose</div>
+          <div className="text-[15px] font-semibold text-primary">{PURPOSES.find(p => p.id === formData.purpose)?.title || formData.purpose}</div>
+        </div>
+        <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
+          <div className="text-[14px] font-bold text-primary">Profile</div>
+          <div className="text-right">
+            <div className="text-[15px] font-semibold text-primary">{formData.gender} · {formData.category}</div>
+            {formData.dob && <div className="text-[12px] text-text-muted mt-0.5">DoB: {formData.dob}</div>}
+          </div>
+        </div>
+        <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
+          <div className="text-[14px] font-bold text-primary">Income</div>
+          <div className="text-[15px] font-semibold text-primary">₹{formData.income ? new Intl.NumberFormat('en-IN').format(Number(formData.income)) : 'N/A'}</div>
+        </div>
+        <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
+          <div className="text-[14px] font-bold text-primary">Location</div>
+          <div className="text-right"><div className="text-[15px] font-semibold text-primary">{formData.districtName}, {formData.stateName}</div></div>
+        </div>
+        {dynamicQuestions.length > 0 && (
+          <div className="px-6 py-5 border-b border-gray-50">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[14px] font-bold text-primary">Additional Details</div>
+              <button onClick={() => handleNext('specifics')} className="text-[13px] font-semibold text-secondary">Edit</button>
+            </div>
+            {dynamicQuestions.map(q => {
+              let displayValue = formData.dynamicAnswers[q.id];
+              if (q.type === 'taxonomy' && displayValue) displayValue = displayValue.activity === 'Other' ? displayValue.customActivityText : ACTIVITY_CATEGORIES.find(c => c.id === displayValue.activity)?.title || displayValue.activity;
+              else if (q.type === 'currency' && displayValue) displayValue = `₹${new Intl.NumberFormat('en-IN').format(Number(displayValue))}`;
+              return (<div key={q.id} className="mb-2"><div className="text-[12px] font-bold text-text-muted uppercase tracking-wide mb-1">{q.label}</div><div className="text-[15px] font-semibold text-primary">{displayValue || 'N/A'}</div></div>);
+            })}
+          </div>
+        )}
       </div>
       <div className="mt-8 text-center">
-        <p className="text-[13px] text-text-muted mb-6">Only current, source-backed and verified Government scheme records are eligible for citizen results.</p>
+        <p className="text-[13px] text-text-muted mb-6">ArthSetu will check the latest verified scheme information available from connected Government sources.</p>
         <button onClick={async () => {
-          setSchemeError('');
-          setStep('processing');
-          window.scrollTo(0, 0);
+          handleNext('processing');
           const sanitizedAnswers: Record<string, string> = {};
-          dynamicQuestions.forEach((q) => {
-            const value = formData.dynamicAnswers?.[q.id];
-            if (value == null || value === '') return;
-            if (q.type === 'taxonomy') sanitizedAnswers[q.id] = value.activity === 'Other' ? value.customActivityText : value.activity;
-            else if (q.type === 'numeric' || q.type === 'currency') sanitizedAnswers[q.id] = String(value).replace(/[^0-9.]/g, '');
-            else sanitizedAnswers[q.id] = String(value);
-          });
-          const disabilityPercentage = sanitizedAnswers.DisabilityPercentage ? Number(sanitizedAnswers.DisabilityPercentage) : undefined;
-          const payload = { ...formData, income: String(formData.income || '').replace(/[^0-9.]/g, ''), dynamicAnswers: sanitizedAnswers, disabilityPercentage };
+          for (const [key, val] of Object.entries(formData.dynamicAnswers || {})) {
+            if (typeof val === 'string') sanitizedAnswers[key] = val.replace(/[^0-9.]/g, '');
+          }
+          const payload = { ...formData, income: formData.income ? String(formData.income).replace(/[^0-9.]/g, '') : formData.income, dynamicAnswers: sanitizedAnswers };
           try {
-            const res = await fetch(`${apiBase()}/api/schemes/match`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!res.ok) throw new Error('The verified scheme service is currently unavailable.');
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+            const res = await fetch(`${baseUrl}/api/schemes/match`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const data = await res.json();
             setSchemeResults(data);
-            window.history.pushState({ ...(window.history.state || {}), arthSetuStep: 'result' }, '');
-            setStep('result');
-            window.scrollTo(0, 0);
-          } catch (error: any) {
-            setSchemeError(error?.message || 'Unable to load verified scheme results. Please try again.');
-            window.history.replaceState({ ...(window.history.state || {}), arthSetuStep: 'review' }, '');
-            setStep('review');
+            handleNext('result');
+          } catch (err) {
+            console.error(err);
+            setSchemeResults({ recommended: [], otherEligible: [], moreInfoNeeded: [], notEligible: [] });
+            handleNext('result');
           }
-        }} className="bg-secondary text-white px-10 py-4 rounded-[12px] font-bold text-[16px] hover:bg-secondary/90 hover:-translate-y-0.5 hover:shadow-lg transition-all inline-flex items-center gap-2">Find My Schemes <Search className="w-5 h-5" /></button>
-        {schemeError && <div className="mt-4 text-sm text-red-600">{schemeError}</div>}
+        }} className="bg-secondary text-white px-10 py-4 rounded-[12px] font-bold text-[16px] hover:bg-secondary/90 hover:-translate-y-0.5 hover:shadow-lg transition-all flex items-center justify-center gap-2 mx-auto">
+          Find My Schemes <Search className="w-5 h-5" />
+        </button>
       </div>
     </div>
   );
 
   const renderProcessing = () => (
-    <div className="max-w-2xl mx-auto text-center mt-24 mb-24 px-4"><div className="flex flex-col items-center gap-6"><div className="w-16 h-16 rounded-full border-4 border-secondary border-t-transparent animate-spin" /><div><h2 className="text-2xl font-extrabold text-primary mb-2">Checking Verified Schemes</h2><p className="text-text-muted text-[15px]">Evaluating your profile against source-backed Government rules…</p></div></div></div>
+    <div className="max-w-2xl mx-auto text-center mt-24 mb-24 px-4">
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-16 h-16 rounded-full border-4 border-secondary border-t-transparent animate-spin" />
+        <div><h2 className="text-2xl font-extrabold text-primary mb-2">Checking Schemes</h2><p className="text-text-muted text-[15px]">Matching your profile against verified Government schemes…</p></div>
+      </div>
+    </div>
   );
-
-  const statusClass = (status: string) => {
-    const s = (status || '').toUpperCase();
-    if (s === 'OPEN') return 'bg-green-50 text-green-700 border-green-100';
-    if (s === 'CLOSED') return 'bg-red-50 text-red-700 border-red-100';
-    if (s === 'NOT_YET_OPEN') return 'bg-amber-50 text-amber-700 border-amber-100';
-    return 'bg-gray-50 text-gray-600 border-gray-100';
-  };
 
   const renderResult = () => {
     if (!schemeResults) return null;
-    const recommended = schemeResults.recommended || [];
+
+    const allSchemes = schemeResults.recommended || [];
+    const filteredSchemes = currentFilter === 'All' 
+        ? allSchemes 
+        : currentFilter === 'Applications Open'
+            ? allSchemes.filter((s: any) => s.applicationRoute?.isOpen)
+            : allSchemes.filter((s: any) => s.benefitType === currentFilter || s.schemeCategory === currentFilter);
+
+    const totalPages = Math.ceil(filteredSchemes.length / ITEMS_PER_PAGE);
+    const paginatedSchemes = filteredSchemes.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const getAccentColor = (type: string) => {
+        if (!type) return 'bg-gray-100 text-gray-700';
+        type = type.toLowerCase();
+        if (type.includes('loan') || type.includes('credit')) return 'bg-blue-50 text-blue-700 border-blue-200';
+        if (type.includes('scholarship') || type.includes('education')) return 'bg-purple-50 text-purple-700 border-purple-200';
+        if (type.includes('subsidy') || type.includes('grant') || type.includes('agriculture')) return 'bg-green-50 text-green-700 border-green-200';
+        if (type.includes('skill') || type.includes('employment')) return 'bg-amber-50 text-amber-700 border-amber-200';
+        return 'bg-teal-50 text-teal-700 border-teal-200';
+    };
+
+    const getAppButton = (scheme: any) => {
+        const route = scheme.applicationRoute;
+        if (!route) return <button className="w-full py-3 bg-gray-100 text-gray-500 font-bold rounded-lg cursor-not-allowed">Application Status Not Verified</button>;
+        if (route.isOpen === false) return <button className="w-full py-3 bg-gray-100 text-gray-500 font-bold rounded-lg cursor-not-allowed">Applications Closed</button>;
+        if (route.isOpen === null) return <button className="w-full py-3 bg-gray-100 text-gray-500 font-bold rounded-lg cursor-not-allowed">Not Yet Open</button>;
+        
+        const mode = route.mode;
+        let ctaText = 'Apply on Official Portal';
+        if (scheme.name.includes('JanSamarth')) ctaText = 'Apply on JanSamarth';
+        else if (scheme.name.includes('Scholarship')) ctaText = 'Apply on National Scholarship Portal';
+        else if (mode === 'PARTNER_ROUTED') ctaText = 'Find Authorized Partner';
+        else if (mode === 'INSTITUTION_ROUTED') ctaText = 'Apply Through Institution';
+        else if (mode === 'CSC_ROUTED') ctaText = 'Apply Through CSC';
+        else if (mode === 'OFFLINE') ctaText = 'View Application Process';
+
+        return <a href={route.url || '#'} target="_blank" rel="noreferrer" className="w-full block text-center py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg transition-colors">{ctaText}</a>;
+    };
+
     return (
-      <div className="max-w-5xl mx-auto mt-4 mb-24 px-4">
-        <div className="mb-8">
-          <button onClick={handleBack} className="inline-flex items-center gap-2 text-[14px] font-bold text-text-muted hover:text-primary transition-colors mb-6"><ArrowLeft className="w-4 h-4" />Back to Review</button>
-          <div className="text-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-primary mb-3">Your Scheme Results</h2>
-            <p className="text-[15px] text-text-muted max-w-2xl mx-auto">These results come from the verified production dataset. Discovery, demo, placeholder and unverified records are excluded.</p>
+      <div className="max-w-4xl mx-auto mt-4 mb-24 px-4">
+        <button onClick={() => { setStep('review'); setStepHistory(prev => prev.slice(0, -1)); }} className="flex items-center gap-1.5 text-text-muted font-bold hover:text-primary transition-colors mb-6 text-[14px]"><ArrowLeft className="w-4 h-4" />Back to Review</button>
+        
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#0B1B3D] mb-4 tracking-tight">Your Scheme Results</h2>
+          <p className="text-[16px] text-gray-600 mb-6">Verified Government schemes matched to your profile</p>
+          
+          <div className="flex flex-wrap justify-center gap-3">
+             <div className="px-4 py-2 bg-green-50 text-green-700 font-bold rounded-full text-[13px] border border-green-200 flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> {allSchemes.length} Eligible</div>
+             {schemeResults.moreInfoNeeded?.length > 0 && <div className="px-4 py-2 bg-amber-50 text-amber-700 font-bold rounded-full text-[13px] border border-amber-200 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> {schemeResults.moreInfoNeeded.length} More Info Needed</div>}
           </div>
         </div>
 
-        {recommended.length === 0 && <div className="bg-white border border-gray-100 rounded-[20px] p-8 text-center shadow-sm"><h3 className="font-bold text-primary text-lg mb-2">No verified eligible scheme found for the information provided</h3><p className="text-text-muted text-sm">This does not mean no Government scheme exists. Try updating your profile or check schemes that need more information below.</p></div>}
+        {allSchemes.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-[#0B1B3D] mb-2">No Verified Schemes Found</h3>
+                <p className="text-gray-600 mb-6">No verified Government scheme matched this profile with the information currently available.</p>
+                <div className="flex justify-center gap-4">
+                    <button onClick={() => setStep('intro')} className="px-6 py-3 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700">Edit Profile</button>
+                    <button onClick={() => setStep('review')} className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-50">Back to Review</button>
+                </div>
+            </div>
+        ) : (
+            <>
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+                    {['All', 'Applications Open', 'Loan', 'Scholarship', 'Subsidy', 'Central', 'State'].map(f => (
+                        <button key={f} onClick={() => {setCurrentFilter(f); setCurrentPage(1);}} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-colors ${currentFilter === f ? 'bg-[#0B1B3D] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
+                            {f}
+                        </button>
+                    ))}
+                </div>
 
-        {recommended.length > 0 && <div className="space-y-5 mb-10">
-          <div className="flex items-end justify-between gap-4"><div><h3 className="text-xl font-extrabold text-primary">Eligible Schemes</h3><p className="text-sm text-text-muted mt-1">{recommended.length} source-backed result{recommended.length === 1 ? '' : 's'}</p></div></div>
-          {recommended.map((scheme: any) => {
-            const canApply = !!scheme.applicationUrl && (scheme.applicationStatus === 'OPEN' || scheme.applicationStatus === 'NOT_APPLICABLE');
-            return <article key={scheme.id} className="bg-white rounded-[20px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-              <div className="p-6 md:p-7">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wide bg-soft-teal text-secondary px-2.5 py-1 rounded-full">Eligible</span>
-                      {scheme.governmentLevel && <span className="text-[11px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full">{scheme.governmentLevel}</span>}
-                      {scheme.applicationStatus && <span className={`text-[11px] font-bold uppercase tracking-wide border px-2.5 py-1 rounded-full ${statusClass(scheme.applicationStatus)}`}>{String(scheme.applicationStatus).replaceAll('_', ' ')}</span>}
+                <div className="space-y-6">
+                {paginatedSchemes.map((scheme: any) => (
+                    <div key={scheme.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="p-6 md:p-8">
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {scheme.schemeCategory && <span className="px-3 py-1 bg-gray-100 text-gray-700 font-bold text-[11px] uppercase tracking-wider rounded-md border border-gray-200">{scheme.schemeCategory}</span>}
+                                {scheme.benefitType && <span className={`px-3 py-1 font-bold text-[11px] uppercase tracking-wider rounded-md border ${getAccentColor(scheme.benefitType)}`}>{scheme.benefitType}</span>}
+                            </div>
+                            
+                            <h3 className="text-2xl font-extrabold text-[#0B1B3D] mb-2 leading-tight">{scheme.name}</h3>
+                            <div className="text-[14px] font-bold text-teal-700 mb-4 flex items-center gap-2">
+                                <Landmark className="w-4 h-4" /> {scheme.officialSource || 'Government of India'}
+                            </div>
+                            
+                            <p className="text-gray-600 text-[15px] leading-relaxed mb-6">{scheme.description}</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 rounded-xl p-5 mb-6 border border-gray-50">
+                                <div>
+                                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Application Status</div>
+                                    <div className="font-bold text-[#0B1B3D]">{scheme.applicationRoute?.isOpen === true ? 'OPEN' : scheme.applicationRoute?.isOpen === false ? 'CLOSED' : scheme.applicationRoute?.isOpen === null ? 'NOT YET OPEN' : 'UNKNOWN'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Last Verified</div>
+                                    <div className="font-bold text-[#0B1B3D]">{scheme.lastVerified || 'Date not available'}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <div className="flex-1">
+                                    {getAppButton(scheme)}
+                                </div>
+                                <button onClick={() => toggleExpanded(scheme.id, 'details')} className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2">
+                                    Why this matched <ChevronDown className={`w-4 h-4 transition-transform ${expandedDetails[scheme.id] ? 'rotate-180' : ''}`} />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {expandedDetails[scheme.id] && (
+                            <div className="bg-gray-50 border-t border-gray-100 p-6 md:p-8">
+                                <h4 className="font-bold text-[#0B1B3D] mb-4">Eligibility Criteria Match</h4>
+                                <div className="space-y-3">
+                                    {scheme.ruleComparisons?.filter((r: any) => r.status === 'Matched').map((evalItem: any, idx: number) => (
+                                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white rounded-lg border border-gray-100">
+                                            <div>
+                                                <div className="text-[14px] font-bold text-[#0B1B3D] mb-1">{evalItem.ruleName}</div>
+                                                <div className="text-[12px] text-gray-500"><span className="font-semibold text-gray-700">Scheme Requirement:</span> {evalItem.schemeCondition}</div>
+                                                <div className="text-[12px] text-gray-500"><span className="font-semibold text-gray-700">Your Profile:</span> {evalItem.userValue}</div>
+                                            </div>
+                                            <div className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-[11px] font-bold uppercase tracking-wider self-start sm:self-center">
+                                                Matched
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <h4 className="text-xl font-extrabold text-primary leading-snug">{scheme.name}</h4>
-                    <p className="text-[13px] text-text-muted mt-1">{scheme.owningAuthority || [scheme.ministry, scheme.department].filter(Boolean).join(' · ')}</p>
-                  </div>
-                  {canApply && <a href={scheme.applicationUrl} target="_blank" rel="noreferrer" className="shrink-0 inline-flex items-center justify-center bg-secondary text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-secondary/90 transition-colors">{scheme.applicationRoute || 'Apply on Official Portal'} <ArrowRight className="w-4 h-4 ml-2" /></a>}
+                ))}
                 </div>
 
-                {scheme.description && <p className="text-[14px] text-text-muted leading-relaxed mt-4 max-w-3xl">{scheme.description}</p>}
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {scheme.benefitType && <span className="text-[11px] font-bold bg-gray-100 text-text-muted px-3 py-1.5 rounded-full">{scheme.benefitType}</span>}
-                  {!canApply && scheme.applicationRoute && <span className="text-[11px] font-bold bg-primary/5 text-primary px-3 py-1.5 rounded-full">{scheme.applicationRoute}</span>}
-                </div>
-
-                <div className="mt-5 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[12px] text-text-muted">
-                  <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-secondary" /><span>Verified source: <strong className="text-text-main">{scheme.officialSource}</strong></span></div>
-                  <div>Last verified: <strong className="text-text-main">{scheme.lastVerified || 'Date not available'}</strong></div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-3 text-[12px]">
-                  {scheme.sourceUrl && <a href={scheme.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-secondary hover:text-primary">View official source</a>}
-                  {scheme.applicationUrl && !canApply && <a href={scheme.applicationUrl} target="_blank" rel="noreferrer" className="font-semibold text-secondary hover:text-primary">View official application information</a>}
-                </div>
-              </div>
-              <button onClick={() => setExpandedDetails((prev) => ({ ...prev, [scheme.id]: !prev[scheme.id] }))} className="w-full px-6 py-4 border-t border-gray-100 flex items-center justify-between text-[13px] font-semibold text-text-main hover:bg-gray-50">
-                <span>Why this scheme matched</span><ChevronDown className={`w-4 h-4 transition-transform ${expandedDetails[scheme.id] ? 'rotate-180' : ''}`} />
-              </button>
-              {expandedDetails[scheme.id] && <div className="px-6 py-4 bg-gray-50/70 space-y-3">{scheme.ruleComparisons?.filter((r: any) => r.status === 'Matched').map((r: any, idx: number) => <div key={idx} className="grid sm:grid-cols-3 gap-2 text-[12px] border-b border-gray-100 pb-3 last:border-0"><strong>{r.ruleName}</strong><span>Your value: {r.userValue}</span><span>Requirement: {r.schemeCondition}</span></div>)}</div>}
-            </article>;
-          })}
-        </div>}
-
-        {schemeResults.moreInfoNeeded?.length > 0 && <div className="border border-gray-100 rounded-[18px] overflow-hidden bg-white mt-8"><button onClick={() => setExpandedMoreInfo((v) => !v)} className="w-full px-5 py-4 flex items-center justify-between font-bold text-primary"><span>More Information Needed ({schemeResults.moreInfoNeeded.length})</span><ChevronDown className={`w-5 h-5 transition-transform ${expandedMoreInfo ? 'rotate-180' : ''}`} /></button>{expandedMoreInfo && <div className="px-5 pb-5 border-t border-gray-50 divide-y divide-gray-50">{schemeResults.moreInfoNeeded.map((scheme: any) => <div key={scheme.id} className="py-4"><div className="font-bold text-primary">{scheme.name}</div><div className="text-sm text-amber-700 mt-1">Needed to decide eligibility: {scheme.missingRules?.join(', ') || 'additional verified rule information'}</div></div>)}</div>}</div>}
-
-        {schemeResults.notEligible?.length > 0 && <div className="border border-gray-100 rounded-[18px] overflow-hidden bg-white mt-6"><button onClick={() => setExpandedAlternative((v) => !v)} className="w-full px-5 py-4 flex items-center justify-between font-bold text-primary"><span>Not Eligible ({schemeResults.notEligible.length})</span><ChevronDown className={`w-5 h-5 transition-transform ${expandedAlternative ? 'rotate-180' : ''}`} /></button>{expandedAlternative && <div className="px-5 pb-5 border-t border-gray-50 divide-y divide-gray-50">{schemeResults.notEligible.map((scheme: any) => <div key={scheme.id} className="py-4"><div className="font-bold text-primary">{scheme.name}</div><button onClick={() => setExpandedNotEligible((prev) => ({ ...prev, [scheme.id]: !prev[scheme.id] }))} className="text-xs font-bold text-red-600 mt-2 inline-flex items-center gap-1">Why not eligible <ChevronDown className="w-3 h-3" /></button>{expandedNotEligible[scheme.id] && <div className="mt-3 bg-red-50 rounded-lg p-3">{scheme.ruleComparisons?.filter((r: any) => r.status === 'Failed').map((r: any, idx: number) => <div key={idx} className="flex gap-2 py-2 text-xs"><XCircle className="w-4 h-4 text-red-600 shrink-0" /><span><strong>{r.ruleName}</strong>: your value {r.userValue}; scheme requires {r.schemeCondition}</span></div>)}</div>}</div>)}</div>}</div>}
-
-        <div className="mt-8 flex flex-col sm:flex-row gap-3">
-          <button onClick={handleBack} className="flex-1 inline-flex items-center justify-center gap-2 bg-white text-primary border border-primary/20 px-6 py-3.5 rounded-xl font-bold hover:border-primary"><ArrowLeft className="w-4 h-4" />Back to Review</button>
-          <button onClick={() => {
-            setFormData({ purpose: '', category: '', dob: '', income: '', state: '', stateName: '', district: '', districtName: '', beneficiaryType: 'Myself', dynamicAnswers: {} });
-            setDynamicQuestions([]);
-            setSchemeResults(null);
-            window.history.pushState({ arthSetuStep: 'intro' }, '');
-            setStep('intro');
-          }} className="flex-1 bg-primary text-white px-6 py-3.5 rounded-xl font-bold">Start New Search</button>
-        </div>
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-8">
+                        <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-[#0B1B3D]"><ArrowLeft className="w-5 h-5" /></button>
+                        <span className="text-[14px] font-bold text-gray-600 mx-4">Page {currentPage} of {totalPages}</span>
+                        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-[#0B1B3D]"><ArrowRight className="w-5 h-5" /></button>
+                    </div>
+                )}
+            </>
+        )}
       </div>
     );
   };
 
   return (
     <div className="min-h-[calc(100vh-160px)] bg-bg-main w-full py-8 md:py-12">
-      {step !== 'intro' && step !== 'processing' && step !== 'result' && <div className="max-w-2xl mx-auto px-4 mb-10">
-        <button onClick={handleBack} className="flex items-center gap-1.5 text-text-muted font-bold hover:text-primary transition-colors mb-4 text-[14px]"><ArrowLeft className="w-4 h-4" />Back</button>
-        <div className="flex items-center justify-between mb-2"><span className="text-[12px] font-bold text-text-muted uppercase tracking-wider">Step {getStepNumber()} of 6</span><span className="text-[12px] font-bold text-primary">{step === 'purpose' ? 'Purpose' : step === 'about' ? 'About You' : step === 'financial' ? 'Financial' : step === 'location' ? 'Location' : step === 'specifics' ? 'Additional Details' : 'Review'}</span></div>
-        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-secondary transition-all duration-500 rounded-full" style={{ width: `${(getStepNumber() / 6) * 100}%` }} /></div>
-      </div>}
+      {step !== 'intro' && step !== 'processing' && step !== 'result' && (
+        <div className="max-w-2xl mx-auto px-4 mb-12">
+          <button onClick={handleBack} className="flex items-center gap-1.5 text-text-muted font-bold hover:text-primary transition-colors mb-4 text-[14px]"><ArrowLeft className="w-4 h-4" />Back</button>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-bold text-text-muted uppercase tracking-wider">Stage {getStepNumber()}</span>
+            <span className="text-[12px] font-bold text-primary">
+              {step === 'purpose' && 'Purpose'}{step === 'about' && 'About You'}{step === 'financial' && 'Financial'}
+              {step === 'specifics' && 'Specifics'}{step === 'location' && 'Location'}{step === 'review' && 'Review'}
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-secondary transition-all duration-500 ease-out rounded-full" style={{ width: `${Math.min(100, (getStepNumber() / 6) * 100)}%` }}></div>
+          </div>
+        </div>
+      )}
       {step === 'intro' && renderIntro()}
       {step === 'purpose' && renderPurpose()}
       {step === 'about' && renderAbout()}
       {step === 'financial' && renderFinancial()}
-      {step === 'location' && renderLocation()}
       {step === 'specifics' && renderSpecifics()}
+      {step === 'location' && renderLocation()}
       {step === 'review' && renderReview()}
       {step === 'processing' && renderProcessing()}
       {step === 'result' && renderResult()}

@@ -42,3 +42,27 @@ appsettings.json
 *.zip
 *.tar.gz
 *.bak
+
+# Temporary patch / ingestion scripts - not part of real application
+*.cjs
+check_csv*.py
+check_db.csx
+check_github.py
+check_ogd.py
+clean_db.csx
+count_schemes.cs
+count_total_schemes.cs
+patch_eligibility.py
+register_lgd.csx
+seed_locations.csx
+update_locations.py
+UpdateLocationMaster.cs
+create_transfer.py
+create_zip.py
+backend_updates.cjs
+fix.js
+replace_render.js
+
+# Internal tools (not application code)
+DbCleaner/
+DbUpdater/
