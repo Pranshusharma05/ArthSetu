@@ -11,6 +11,7 @@ namespace ArthSetuBackend.Data
         public static void Initialize(ApplicationDbContext context)
         {
             context.Database.EnsureCreated();
+            OfficialDataSeeder.Seed(context);
             
             // Check if NSFDC is verified already
             var nsfdcSource = context.GovernmentSources.FirstOrDefault(s => s.Id == "src-nsfdc");
