@@ -27,6 +27,7 @@ namespace ArthSetuBackend.Models
         public DateTime? LastFetched { get; set; }
         public DateTime? LastVerified { get; set; }
         public string? VerificationStatus { get; set; }
+        public string? RulesetStatus { get; set; }
         public bool IsActive { get; set; }
         public string DataOrigin { get; set; } = "Development Seed";
         public string? SourceId { get; set; }
@@ -34,6 +35,9 @@ namespace ArthSetuBackend.Models
         public GovernmentSource? Source { get; set; }
         
         public string? LifecycleStatus { get; set; }
+        public string? ApplicationWindowStatus { get; set; }
+        public DateTime? ApplicationOpenFrom { get => ApplicationStartDate; set => ApplicationStartDate = value; }
+        public DateTime? ApplicationOpenUntil { get => ApplicationEndDate; set => ApplicationEndDate = value; }
         public DateTime? ApplicationStartDate { get; set; }
         public DateTime? ApplicationEndDate { get; set; }
         public string? OwningAuthority { get; set; }
@@ -51,7 +55,9 @@ namespace ArthSetuBackend.Models
 
         public ICollection<SchemeApplicationWindow> ApplicationWindows { get; set; } = new List<SchemeApplicationWindow>();
         public ICollection<SchemeBenefitComponent> BenefitComponents { get; set; } = new List<SchemeBenefitComponent>();
+        public ICollection<SchemeDiscoveryCategory> DiscoveryCategories { get; set; } = new List<SchemeDiscoveryCategory>();
     }
 }
+
 
 

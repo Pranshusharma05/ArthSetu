@@ -35,31 +35,19 @@ const ACTIVITY_CATEGORIES = [
   { id: 'Startup', title: 'Startup' }, { id: 'Other', title: 'Other' }
 ];
 
-const STATES = [
-  { code: 'AN', name: 'Andaman and Nicobar Islands' }, { code: 'AP', name: 'Andhra Pradesh' },
-  { code: 'AR', name: 'Arunachal Pradesh' }, { code: 'AS', name: 'Assam' },
-  { code: 'BR', name: 'Bihar' }, { code: 'CH', name: 'Chandigarh' },
-  { code: 'CT', name: 'Chhattisgarh' }, { code: 'DN', name: 'Dadra and Nagar Haveli and Daman and Diu' },
-  { code: 'DL', name: 'Delhi' }, { code: 'GA', name: 'Goa' },
-  { code: 'GJ', name: 'Gujarat' }, { code: 'HR', name: 'Haryana' },
-  { code: 'HP', name: 'Himachal Pradesh' }, { code: 'JK', name: 'Jammu and Kashmir' },
-  { code: 'JH', name: 'Jharkhand' }, { code: 'KA', name: 'Karnataka' },
-  { code: 'KL', name: 'Kerala' }, { code: 'LA', name: 'Ladakh' },
-  { code: 'LD', name: 'Lakshadweep' }, { code: 'MP', name: 'Madhya Pradesh' },
-  { code: 'MH', name: 'Maharashtra' }, { code: 'MN', name: 'Manipur' },
-  { code: 'ML', name: 'Meghalaya' }, { code: 'MZ', name: 'Mizoram' },
-  { code: 'NL', name: 'Nagaland' }, { code: 'OR', name: 'Odisha' },
-  { code: 'PY', name: 'Puducherry' }, { code: 'PB', name: 'Punjab' },
-  { code: 'RJ', name: 'Rajasthan' }, { code: 'SK', name: 'Sikkim' },
-  { code: 'TN', name: 'Tamil Nadu' }, { code: 'TG', name: 'Telangana' },
-  { code: 'TR', name: 'Tripura' }, { code: 'UP', name: 'Uttar Pradesh' },
-  { code: 'UT', name: 'Uttarakhand' }, { code: 'WB', name: 'West Bengal' }
-];
-
-const fetchDistrictsFromBackend = async (stateCode: string): Promise<{code: string, name: string}[]> => {
+const fetchStatesFromBackend = async (): Promise<{id: number, code: string, name: string}[]> => {
   try {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-    const res = await fetch(`${baseUrl}/api/locations/districts?state=${stateCode}`);
+    const res = await fetch(`${baseUrl}/api/locations/states`);
+    if (!res.ok) throw new Error('Failed to fetch states');
+    return await res.json();
+  } catch (error) { console.error(error); return []; }
+};
+
+const fetchDistrictsFromBackend = async (stateIdentifier: string): Promise<{code: string, name: string}[]> => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const res = await fetch(`${baseUrl}/api/locations/districts?state=${encodeURIComponent(stateIdentifier)}`);
     if (!res.ok) throw new Error('Failed to fetch districts');
     return await res.json();
   } catch (error) { console.error(error); return []; }
@@ -107,6 +95,9 @@ export function FindScheme() {
     district: '', districtName: '', beneficiaryType: 'Myself', dynamicAnswers: {}
   });
   const [availableDistricts, setAvailableDistricts] = useState<{code: string, name: string}[]>([]);
+  const [availableStates, setAvailableStates] = useState<{id: number, code: string, name: string}[]>([]);
+  const [isLoadingStates, setIsLoadingStates] = useState(false);
+  const [isDistrictsError, setIsDistrictsError] = useState(false);
   const [dynamicQuestions, setDynamicQuestions] = useState<DynamicQuestion[]>([]);
   const [isFetchingQuestions, setIsFetchingQuestions] = useState(false);
   const [schemeResults, setSchemeResults] = useState<any>(null);
@@ -120,16 +111,44 @@ export function FindScheme() {
   const [stepHistory, setStepHistory] = useState<Step[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentFilter, setCurrentFilter] = useState("All");
+  const [categoryCoverage, setCategoryCoverage] = useState<Record<string, number>>({});
   const ITEMS_PER_PAGE = 10;
 
+  React.useEffect(() => {
+    const loadData = async () => {
+      setIsLoadingStates(true);
+      const states = await fetchStatesFromBackend();
+      setAvailableStates(states.sort((a, b) => a.name.localeCompare(b.name)));
+      setIsLoadingStates(false);
+
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+        const res = await fetch(`${baseUrl}/api/schemes/category-coverage`);
+        if (res.ok) {
+          const data = await res.json();
+          setCategoryCoverage(data);
+        }
+      } catch (err) { console.error('Failed to load category coverage', err); }
+    };
+    loadData();
+  }, []);
+
   const handleStateChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = e.target.value;
-    const name = STATES.find(s => s.code === code)?.name || '';
-    setFormData({ ...formData, state: code, stateName: name, district: '', districtName: '', dynamicAnswers: {} });
+    const selectedId = e.target.value; // DB integer id as string
+    const stateObj = availableStates.find(s => String(s.id) === selectedId);
+    const name = stateObj?.name || '';
+    setFormData({ ...formData, state: selectedId, stateName: name, district: '', districtName: '', dynamicAnswers: {} });
     setIsLoadingDistricts(true);
-    const districts = await fetchDistrictsFromBackend(code);
+    setIsDistrictsError(false);
+    try {
+      // Send DB integer id as the state identifier — backend resolves by Id first
+      const districts = await fetchDistrictsFromBackend(selectedId);
+      setAvailableDistricts(districts.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (err) {
+      setIsDistrictsError(true);
+      setAvailableDistricts([]);
+    }
     setIsLoadingDistricts(false);
-    setAvailableDistricts(districts);
   };
 
   const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -184,14 +203,23 @@ export function FindScheme() {
     <div className="max-w-3xl mx-auto mt-8 mb-24 px-4">
       <h2 className="text-2xl md:text-3xl font-extrabold text-primary mb-8 text-center">What do you need support for?</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {PURPOSES.map((item) => (
-          <div key={item.id} onClick={() => setFormData({ ...formData, purpose: item.id })}
-            className={`p-5 rounded-[16px] border-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${formData.purpose === item.id ? 'border-secondary bg-soft-teal' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
-            <item.icon className={`w-6 h-6 mb-3 ${formData.purpose === item.id ? 'text-secondary' : 'text-text-muted'}`} />
-            <div className={`font-bold text-[14px] mb-1 ${formData.purpose === item.id ? 'text-secondary' : 'text-primary'}`}>{item.title}</div>
-            <div className="text-[12px] text-text-muted leading-relaxed">{item.desc}</div>
-          </div>
-        ))}
+        {PURPOSES.map((item) => {
+          const count = categoryCoverage[item.title];
+          const isDisabled = count === 0;
+          return (
+            <div key={item.id} onClick={() => !isDisabled && setFormData({ ...formData, purpose: item.id })}
+              className={`p-5 rounded-[16px] border-2 transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md'} ${formData.purpose === item.id ? 'border-secondary bg-soft-teal' : (!isDisabled ? 'border-gray-100 bg-white hover:border-gray-200' : '')}`}>
+              <item.icon className={`w-6 h-6 mb-3 ${formData.purpose === item.id ? 'text-secondary' : 'text-text-muted'}`} />
+              <div className={`font-bold text-[14px] mb-1 ${formData.purpose === item.id ? 'text-secondary' : 'text-primary'}`}>{item.title}</div>
+              <div className="text-[12px] text-text-muted leading-relaxed mb-3">{item.desc}</div>
+              {count !== undefined && (
+                <div className={`text-[11px] font-semibold px-2 py-1 rounded w-fit ${isDisabled ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+                  {isDisabled ? 'Verified coverage being added' : `${count} verified scheme${count > 1 ? 's' : ''}`}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       {formData.purpose === 'Other' && (
         <input type="text" placeholder="Please describe your need" value={formData.customPurposeText || ''} onChange={(e) => setFormData({ ...formData, customPurposeText: e.target.value })} className="w-full bg-white border border-gray-200 rounded-xl py-3.5 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary mb-6" />
@@ -346,22 +374,29 @@ export function FindScheme() {
       <div className="bg-white rounded-[20px] p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col gap-6">
         <div>
           <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">State / UT</label>
-          <select value={formData.state} onChange={handleStateChange} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none">
-            <option value="">Select state</option>
-            {STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+          <select value={formData.state} onChange={handleStateChange} disabled={isLoadingStates} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none">
+            <option value="">{isLoadingStates ? 'Loading states...' : 'Select state'}</option>
+            {availableStates.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-[13px] font-bold text-text-muted uppercase tracking-wide mb-2">District</label>
-          <select value={formData.district} onChange={handleDistrictChange} disabled={!formData.state || isLoadingDistricts}
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none disabled:opacity-50 disabled:cursor-not-allowed">
-            <option value="" disabled>{isLoadingDistricts ? 'Loading districts...' : 'Select district'}</option>
-            {availableDistricts.map(district => <option key={district.code} value={district.code}>{district.name}</option>)}
-          </select>
+          {isDistrictsError ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-red-500 text-sm">District data could not be loaded.</span>
+              <button onClick={() => handleStateChange({target: {value: formData.state}} as any)} className="text-secondary text-sm font-bold text-left hover:underline">Retry</button>
+            </div>
+          ) : (
+            <select value={formData.district} onChange={handleDistrictChange} disabled={!formData.state || isLoadingDistricts}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-[15px] text-primary focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary appearance-none disabled:opacity-50 disabled:cursor-not-allowed">
+              <option value="">{isLoadingDistricts ? 'Loading districts...' : 'Select district (Optional)'}</option>
+              {availableDistricts.map(district => <option key={district.code} value={district.code}>{district.name}</option>)}
+            </select>
+          )}
         </div>
       </div>
       <div className="mt-10 flex justify-end items-center">
-        <button disabled={!formData.state || !formData.district || isFetchingQuestions}
+        <button disabled={!formData.state || isFetchingQuestions}
           onClick={async () => {
             setIsFetchingQuestions(true);
             const questions = await fetchDynamicQuestions(formData);
@@ -369,12 +404,58 @@ export function FindScheme() {
             if (questions.length > 0) { setDynamicQuestions(questions); handleNext('specifics'); }
             else { handleNext('review'); }
           }}
-          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${formData.state && formData.district && !isFetchingQuestions ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+          className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${formData.state && !isFetchingQuestions ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
           {isFetchingQuestions ? 'Loading...' : <>Continue <ArrowRight className="w-5 h-5" /></>}
         </button>
       </div>
     </div>
   );
+
+  const performFinalMatch = async () => {
+    handleNext('processing');
+    const sanitizedAnswers: Record<string, string> = {};
+    for (const [key, val] of Object.entries(formData.dynamicAnswers || {})) {
+      if (typeof val === 'string') sanitizedAnswers[key] = val.replace(/[^0-9.]/g, '');
+      else if (val && typeof val === 'object' && (val as any).activity) {
+          sanitizedAnswers[key] = (val as any).activity === 'Other' ? (val as any).customActivityText : (val as any).activity;
+      }
+    }
+    const payload = { ...formData, income: formData.income ? String(formData.income).replace(/[^0-9.]/g, '') : formData.income, dynamicAnswers: sanitizedAnswers };
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const res = await fetch(`${baseUrl}/api/schemes/match`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      setSchemeResults(data);
+      handleNext('result');
+    } catch (err) {
+      console.error(err);
+      setSchemeResults({ recommended: [], otherEligible: [], moreInfoNeeded: [], notEligible: [] });
+      handleNext('result');
+    }
+  };
+
+  const fetchAndHandleDynamicQuestions = async () => {
+    handleNext('processing');
+    const sanitizedAnswers: Record<string, string> = {};
+    for (const [key, val] of Object.entries(formData.dynamicAnswers || {})) {
+      if (typeof val === 'string') sanitizedAnswers[key] = val.replace(/[^0-9.]/g, '');
+      else if (val && typeof val === 'object' && (val as any).activity) {
+          sanitizedAnswers[key] = (val as any).activity === 'Other' ? (val as any).customActivityText : (val as any).activity;
+      }
+    }
+    const payload = { ...formData, income: formData.income ? String(formData.income).replace(/[^0-9.]/g, '') : formData.income, dynamicAnswers: sanitizedAnswers };
+    try {
+      const q = await fetchDynamicQuestions(payload);
+      if (q && q.length > 0) {
+        setDynamicQuestions(q);
+        handleNext('specifics');
+      } else {
+        await performFinalMatch();
+      }
+    } catch(err) {
+      await performFinalMatch();
+    }
+  };
 
   const renderSpecifics = () => {
     // isPwD can be known from:
@@ -475,7 +556,7 @@ export function FindScheme() {
           )}
         </div>
         <div className="mt-10 flex justify-end items-center">
-          <button disabled={!isComplete} onClick={() => handleNext('review')}
+          <button disabled={!isComplete} onClick={fetchAndHandleDynamicQuestions}
             className={`px-10 py-4 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center gap-2 ${isComplete ? 'bg-primary text-white hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
             Continue <ArrowRight className="w-5 h-5" />
           </button>
@@ -524,25 +605,7 @@ export function FindScheme() {
       </div>
       <div className="mt-8 text-center">
         <p className="text-[13px] text-text-muted mb-6">ArthSetu will check the latest verified scheme information available from connected Government sources.</p>
-        <button onClick={async () => {
-          handleNext('processing');
-          const sanitizedAnswers: Record<string, string> = {};
-          for (const [key, val] of Object.entries(formData.dynamicAnswers || {})) {
-            if (typeof val === 'string') sanitizedAnswers[key] = val.replace(/[^0-9.]/g, '');
-          }
-          const payload = { ...formData, income: formData.income ? String(formData.income).replace(/[^0-9.]/g, '') : formData.income, dynamicAnswers: sanitizedAnswers };
-          try {
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-            const res = await fetch(`${baseUrl}/api/schemes/match`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const data = await res.json();
-            setSchemeResults(data);
-            handleNext('result');
-          } catch (err) {
-            console.error(err);
-            setSchemeResults({ recommended: [], otherEligible: [], moreInfoNeeded: [], notEligible: [] });
-            handleNext('result');
-          }
-        }} className="bg-secondary text-white px-10 py-4 rounded-[12px] font-bold text-[16px] hover:bg-secondary/90 hover:-translate-y-0.5 hover:shadow-lg transition-all flex items-center justify-center gap-2 mx-auto">
+        <button onClick={fetchAndHandleDynamicQuestions} className="bg-secondary text-white px-10 py-4 rounded-[12px] font-bold text-[16px] hover:bg-secondary/90 hover:-translate-y-0.5 hover:shadow-lg transition-all flex items-center justify-center gap-2 mx-auto">
           Find My Schemes <Search className="w-5 h-5" />
         </button>
       </div>

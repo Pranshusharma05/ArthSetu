@@ -1,4 +1,4 @@
-
+// NON-PRODUCTION LEGACY MOCK SERVER - NOT USED BY CITIZEN PRODUCTION FLOW (Use ASP.NET Backend on Port 5000)
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -9,342 +9,302 @@ async function startServer() {
   
   app.use(express.json());
 
-
-// --- Real Government Data Architectures (Mocking SQL Server Database) ---
 const GOVERNMENT_SOURCES = [
-  { id: 'src-nsp', name: 'National Scholarship Portal', ministry: 'Ministry of Electronics & Information Technology', domain: 'scholarships.gov.in', level: 'Central', ingestionMethod: 'Manual / Document-Based Verification Required', status: 'Verified' },
-  { id: 'src-moe', name: 'Ministry of Education', department: 'Higher Education', domain: 'education.gov.in', level: 'Central', ingestionMethod: 'Manual / Document-Based Verification Required', status: 'Verified' },
-  { id: 'src-msje', name: 'Ministry of Social Justice & Empowerment', domain: 'socialjustice.gov.in', level: 'Central', ingestionMethod: 'Official JSON', status: 'Verified' },
-  { id: 'src-vidyalaxmi', name: 'PM-Vidyalaxmi', department: 'Department of Financial Services', domain: 'vidyalakshmi.co.in', level: 'Central', ingestionMethod: 'Official API', status: 'Pending Integration' },
-  { id: 'src-up-swd', name: 'UP Scholarship and Fee Reimbursement Online System', department: 'Social Welfare Department', state: 'UP', domain: 'scholarship.up.gov.in', level: 'State', ingestionMethod: 'Manual / Document-Based Verification Required', status: 'Verified' }
+  { id: 'src-nsp', name: 'National Scholarship Portal', ministry: 'Ministry of Electronics & Information Technology', domain: 'scholarships.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-moe', name: 'Ministry of Education', department: 'Higher Education', domain: 'education.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-msje', name: 'Ministry of Social Justice & Empowerment', domain: 'socialjustice.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-msme', name: 'Ministry of MSME', domain: 'msme.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-dfs', name: 'Department of Financial Services', domain: 'financialservices.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-dpiit', name: 'DPIIT', domain: 'startupindia.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-moa', name: 'Ministry of Agriculture', domain: 'agricoop.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-mofpi', name: 'Ministry of Food Processing Industries', domain: 'mofpi.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-mohua', name: 'Ministry of Housing and Urban Affairs', domain: 'mohua.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-up-swd', name: 'UP Social Welfare Department', domain: 'scholarship.up.gov.in', level: 'State', ingestionMethod: 'API', status: 'Verified' },
+  { id: 'src-msma', name: 'Ministry of Minority Affairs', domain: 'minorityaffairs.gov.in', level: 'Central', ingestionMethod: 'API', status: 'Verified' },
 ];
 
 const SCHEMES = [
-  {
-    id: 'edu-up-post-matric',
-    name: 'Post Matric Scholarship for SC/ST/General/OBC/Minority (Uttar Pradesh)',
-    sourceId: 'src-up-swd',
-    category: 'Education',
-    benefitType: 'Fee Reimbursement',
-    purpose: 'Education',
-    applicationRoute: 'Apply on State Scholarship Portal (scholarship.up.gov.in)',
-    verificationStatus: 'Verified',
-    lastVerified: '2023-11-01',
-    description: 'Financial assistance and fee reimbursement for students studying at post-matriculation or post-secondary stage.',
-    seedData: false
-  },
-  {
-    id: 'edu-top-class-sc',
-    name: 'Top Class Education Scheme for SC Students',
-    sourceId: 'src-msje',
-    category: 'Education',
-    benefitType: 'Scholarship',
-    purpose: 'Education',
-    applicationRoute: 'Apply on National Scholarship Portal',
-    verificationStatus: 'Verified',
-    lastVerified: '2023-12-10',
-    description: 'Financial support to SC students for pursuing degree and post graduate level courses in notified Top Class Institutions.',
-    seedData: false
-  },
-  {
-    id: 'edu-central-sector',
-    name: 'Central Sector Scheme of Scholarship for College and University Students',
-    sourceId: 'src-moe',
-    category: 'Education',
-    benefitType: 'Scholarship',
-    purpose: 'Education',
-    applicationRoute: 'Apply on National Scholarship Portal',
-    verificationStatus: 'Verified',
-    lastVerified: '2024-01-15',
-    description: 'Financial assistance to meritorious students from low-income families to meet a part of their day-to-day expenses while pursuing higher studies.',
-    seedData: false
-  },
-  {
-    id: 'edu-interest-subsidy',
-    name: 'Dr. Ambedkar Central Sector Scheme of Interest Subsidy on Educational Loans for Overseas Studies',
-    sourceId: 'src-msje',
-    category: 'Education',
-    benefitType: 'Interest Subsidy',
-    purpose: 'Education',
-    applicationRoute: 'Apply through PM-Vidyalaxmi',
-    verificationStatus: 'Verified',
-    lastVerified: '2023-10-25',
-    description: 'Interest subsidy on educational loans for overseas studies for OBCs and EBCs.',
-    seedData: false
-  }
+  // EDUCATION
+  { id: 'edu-up-post-matric', purpose: 'Education', name: 'Post Matric Scholarship (UP)', sourceId: 'src-up-swd', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-top-class-sc', purpose: 'Education', name: 'Top Class Education Scheme for SC', sourceId: 'src-msje', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-pm-usp-central-sector', purpose: 'Education', name: 'PM-USP Central Sector Scheme of Scholarship for College and University Students', sourceId: 'src-moe', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-pragati-degree', purpose: 'Education', name: 'AICTE Pragati Scholarship for Girls - Degree', sourceId: 'src-moe', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-pragati-diploma', purpose: 'Education', name: 'AICTE Pragati Scholarship for Girls - Diploma', sourceId: 'src-moe', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-saksham-degree', purpose: 'Education', name: 'AICTE Saksham Scholarship for Specially-Abled Student - Degree', sourceId: 'src-moe', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-saksham-diploma', purpose: 'Education', name: 'AICTE Saksham Scholarship for Specially-Abled Student - Diploma', sourceId: 'src-moe', category: 'Scholarship', lifecycle: 'ACTIVE_AND_OPEN' },
+  
+  // EDUCATION LOAN
+  { id: 'edu-interest-subsidy', purpose: 'Education', name: 'Dr. Ambedkar Central Sector Scheme of Interest Subsidy on Educational Loans for Overseas Studies for OBCs/EBCs', sourceId: 'src-msje', category: 'Education Loan', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'edu-padho-pardesh', purpose: 'Education', name: 'Padho Pardesh Scheme of Interest Subsidy', sourceId: 'src-msma', category: 'Education Loan', lifecycle: 'DISCONTINUED' },
+  
+  // BUSINESS
+  { id: 'biz-pmegp', purpose: 'Business', name: 'Prime Minister Employment Generation Programme (PMEGP)', sourceId: 'src-msme', category: 'Loan', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'biz-pmfme', purpose: 'Business', name: 'PM Formalisation of Micro food processing Enterprises (PMFME)', sourceId: 'src-mofpi', category: 'Loan', lifecycle: 'ACTIVE_AND_OPEN', components: ['Individual Micro Enterprises'] },
+  { id: 'biz-pmmy', purpose: 'Business', name: 'Pradhan Mantri MUDRA Yojana (PMMY)', sourceId: 'src-dfs', category: 'Loan', lifecycle: 'ACTIVE_AND_OPEN', components: ['Shishu', 'Kishore', 'Tarun', 'Tarun Plus'] },
+  
+  // STARTUP
+  { id: 'startup-sisfs', purpose: 'Startup', name: 'Startup India Seed Fund Scheme (SISFS)', sourceId: 'src-dpiit', category: 'Grant', lifecycle: 'ACTIVE_BUT_APPLICATION_CLOSED', applicationWindowStatus: 'CLOSED' },
+  { id: 'startup-cgss', purpose: 'Startup', name: 'Credit Guarantee Scheme for Startups (CGSS)', sourceId: 'src-dpiit', category: 'Guarantee', lifecycle: 'ACTIVE_AND_OPEN' },
+  
+  // AGRICULTURE
+  { id: 'agri-pmkisan', purpose: 'Agriculture', name: 'PM-KISAN', sourceId: 'src-moa', category: 'Direct Benefit', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'agri-aif', purpose: 'Agriculture', name: 'Agriculture Infrastructure Fund (AIF)', sourceId: 'src-moa', category: 'Loan', lifecycle: 'ACTIVE_AND_OPEN' },
+  { id: 'agri-kcc', purpose: 'Agriculture', name: 'Kisan Credit Card (KCC)', sourceId: 'src-moa', category: 'Credit', lifecycle: 'ACTIVE_AND_OPEN' }
 ];
 
 const SCHEME_RULES = [
-  // UP Post Matric
-  { schemeId: 'edu-up-post-matric', field: 'state', operator: 'Equals', value: 'UP', mandatory: true },
-  { schemeId: 'edu-up-post-matric', field: 'income', operator: 'Max_UP_PostMatric', value: '', mandatory: true }, // Custom logic required
-  { schemeId: 'edu-up-post-matric', field: 'educationLevel', operator: 'InList', value: 'Undergraduate,Postgraduate,Vocational', mandatory: true },
-  { schemeId: 'edu-up-post-matric', field: 'institutionRecognition', operator: 'Equals', value: 'Recognized', mandatory: true },
+  // Edu Scholarship
+  { schemeId: 'edu-up-post-matric', field: 'state', operator: 'Equals', value: 'UP', provenance: 'SYSTEM_DERIVED' },
+  { schemeId: 'edu-top-class-sc', field: 'category', operator: 'Equals', value: 'SC', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-pm-usp-central-sector', field: 'income', operator: 'Max', value: '450000', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-pragati-degree', field: 'gender', operator: 'Equals', value: 'Female', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-pragati-degree', field: 'courseType', operator: 'Equals', value: 'Degree', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-pragati-diploma', field: 'gender', operator: 'Equals', value: 'Female', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-pragati-diploma', field: 'courseType', operator: 'Equals', value: 'Diploma', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-saksham-degree', field: 'pwdStatus', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-saksham-degree', field: 'disabilityPercentage', operator: 'Min', value: '40', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-saksham-degree', field: 'courseType', operator: 'Equals', value: 'Degree', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-saksham-diploma', field: 'pwdStatus', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-saksham-diploma', field: 'disabilityPercentage', operator: 'Min', value: '40', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-saksham-diploma', field: 'courseType', operator: 'Equals', value: 'Diploma', provenance: 'USER_DECLARED' },
+  
+  // Edu Loan
+  { schemeId: 'edu-interest-subsidy', field: 'category', operator: 'InList', value: 'OBC,EBC', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-interest-subsidy', field: 'studyLocation', operator: 'Equals', value: 'Overseas', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-padho-pardesh', field: 'category', operator: 'Equals', value: 'Minority', provenance: 'USER_DECLARED' },
+  { schemeId: 'edu-padho-pardesh', field: 'studyLocation', operator: 'Equals', value: 'Overseas', provenance: 'USER_DECLARED' },
 
-  // Top Class Education SC
-  { schemeId: 'edu-top-class-sc', field: 'category', operator: 'Equals', value: 'SC', mandatory: true },
-  { schemeId: 'edu-top-class-sc', field: 'income', operator: 'Max', value: '800000', mandatory: true },
-  { schemeId: 'edu-top-class-sc', field: 'educationLevel', operator: 'InList', value: 'Undergraduate,Postgraduate', mandatory: true },
-  { schemeId: 'edu-top-class-sc', field: 'institutionCategory', operator: 'Equals', value: 'Top Class Notified', mandatory: true },
+  // Business (PMEGP)
+  { schemeId: 'biz-pmegp', field: 'age', operator: 'Min', value: '18', provenance: 'SYSTEM_DERIVED' },
+  { schemeId: 'biz-pmegp', field: 'projectCost', operator: 'Max', value: '5000000', provenance: 'USER_DECLARED' },
+  { schemeId: 'biz-pmegp', field: 'businessActivity', operator: 'InList', value: 'Manufacturing,Service', provenance: 'USER_DECLARED' },
+  { schemeId: 'biz-pmegp', field: 'applicantType', operator: 'InList', value: 'Individual,SHG,Institution', provenance: 'USER_DECLARED' },
+  
+  // Business (PMFME)
+  { schemeId: 'biz-pmfme', field: 'businessActivity', operator: 'Equals', value: 'Food Processing', provenance: 'USER_DECLARED' },
+  { schemeId: 'biz-pmfme', field: 'enterpriseType', operator: 'InList', value: 'Micro,FPO,SHG', provenance: 'USER_DECLARED' },
 
-  // Central Sector Scholarship
-  { schemeId: 'edu-central-sector', field: 'income', operator: 'Max', value: '450000', mandatory: true },
-  { schemeId: 'edu-central-sector', field: 'age', operator: 'Range', value: '18-25', mandatory: true },
-  { schemeId: 'edu-central-sector', field: 'class12Marks', operator: 'Min', value: '80', mandatory: true },
-  { schemeId: 'edu-central-sector', field: 'regularFullTime', operator: 'Equals', value: 'Yes', mandatory: true },
-  { schemeId: 'edu-central-sector', field: 'educationLevel', operator: 'InList', value: 'Undergraduate,Postgraduate', mandatory: true },
+  // Business (PMMY Canonical)
+  { schemeId: 'biz-pmmy', field: 'projectCost', operator: 'Max', value: '2000000', provenance: 'USER_DECLARED' },
 
-  // Dr Ambedkar Interest Subsidy
-  { schemeId: 'edu-interest-subsidy', field: 'category', operator: 'InList', value: 'OBC,EBC', mandatory: true }, // Not directly EBC mapped from category yet, we'll map category
-  { schemeId: 'edu-interest-subsidy', field: 'income', operator: 'Max', value: '800000', mandatory: true },
-  { schemeId: 'edu-interest-subsidy', field: 'educationLevel', operator: 'InList', value: 'Postgraduate', mandatory: true }, // For overseas studies, usually PG
+  // Startup (SISFS - Comprehensive)
+  { schemeId: 'startup-sisfs', field: 'dpiitRecognized', operator: 'Equals', value: 'Yes', provenance: 'OFFICIAL_DATABASE_VERIFIED' },
+  { schemeId: 'startup-sisfs', field: 'incorporationYears', operator: 'Max', value: '2', provenance: 'SYSTEM_DERIVED' },
+  { schemeId: 'startup-sisfs', field: 'priorGovtSupportLimit', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+  { schemeId: 'startup-sisfs', field: 'businessIdeaFit', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+  { schemeId: 'startup-sisfs', field: 'technologyUsage', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+  { schemeId: 'startup-sisfs', field: 'indianPromoterShareholding', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+  { schemeId: 'startup-sisfs', field: 'previousSeedSupportRestrictions', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' },
+
+  // Startup (CGSS - Comprehensive)
+  { schemeId: 'startup-cgss', field: 'dpiitRecognized', operator: 'Equals', value: 'Yes', provenance: 'OFFICIAL_DATABASE_VERIFIED' },
+  { schemeId: 'startup-cgss', field: 'notInDefault', operator: 'Equals', value: 'Yes', provenance: 'EXTERNAL_AUTHORITY_ASSESSMENT' },
+  { schemeId: 'startup-cgss', field: 'notNpa', operator: 'Equals', value: 'Yes', provenance: 'EXTERNAL_AUTHORITY_ASSESSMENT' },
+  { schemeId: 'startup-cgss', field: 'memberInstitutionEligibility', operator: 'Equals', value: 'Yes', provenance: 'EXTERNAL_AUTHORITY_ASSESSMENT' },
+  
+  // Agriculture (PM-KISAN Exclusions)
+  { schemeId: 'agri-pmkisan', field: 'landholding', operator: 'Max', value: '2', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-pmkisan', field: 'institutionalLandHolder', operator: 'Equals', value: 'No', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-pmkisan', field: 'constitutionalPostHolder', operator: 'Equals', value: 'No', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-pmkisan', field: 'govtEmployee', operator: 'Equals', value: 'No', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-pmkisan', field: 'pensioner', operator: 'Equals', value: 'No', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-pmkisan', field: 'incomeTaxPayer', operator: 'Equals', value: 'No', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-pmkisan', field: 'registeredProfessional', operator: 'Equals', value: 'No', provenance: 'USER_DECLARED' },
+
+  { schemeId: 'agri-aif', field: 'agriActivity', operator: 'Equals', value: 'PostHarvest', provenance: 'USER_DECLARED' },
+  { schemeId: 'agri-kcc', field: 'farmerType', operator: 'InList', value: 'Owner,Tenant,Sharecropper', provenance: 'USER_DECLARED' }
 ];
 
-const STATES_MAP: Record<string, string> = {
-  'UP': 'Uttar Pradesh',
-  'DL': 'Delhi',
-  'MH': 'Maharashtra'
-};
+const QUESTIONS_DEF = [
+  { id: 'state', type: 'text', label: 'State' },
+  { id: 'category', type: 'single_choice', label: 'Social Category', options: [{label:'SC',value:'SC'},{label:'ST',value:'ST'},{label:'OBC',value:'OBC'},{label:'General',value:'General'},{label:'Minority',value:'Minority'},{label:'EBC',value:'EBC'}] },
+  { id: 'gender', type: 'single_choice', label: 'Gender', options: [{label:'Male',value:'Male'},{label:'Female',value:'Female'},{label:'Other',value:'Other'}] },
+  { id: 'pwdStatus', type: 'yes_no', label: 'Are you a Person with Disability (PwD)?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'disabilityPercentage', type: 'numeric', label: 'Disability Percentage' },
+  { id: 'courseType', type: 'single_choice', label: 'Course Type', options: [{label:'Degree',value:'Degree'},{label:'Diploma',value:'Diploma'},{label:'Other',value:'Other'}] },
+  { id: 'studyLocation', type: 'single_choice', label: 'Study Location', options: [{label:'India',value:'India'},{label:'Overseas',value:'Overseas'}] },
+  { id: 'income', type: 'currency', label: 'Annual Family Income (₹)' },
+  { id: 'age', type: 'numeric', label: 'Age' },
+  
+  { id: 'projectCost', type: 'currency', label: 'Estimated Project Cost (₹)' },
+  { id: 'businessActivity', type: 'single_choice', label: 'Business Sector', options: [{label:'Manufacturing',value:'Manufacturing'},{label:'Service',value:'Service'},{label:'Trading',value:'Trading'},{label:'Food Processing',value:'Food Processing'}] },
+  { id: 'applicantType', type: 'single_choice', label: 'Applicant Type', options: [{label:'Individual',value:'Individual'},{label:'SHG',value:'SHG'},{label:'Institution',value:'Institution'}] },
+  { id: 'educationLevel', type: 'single_choice', label: 'Education Qualification', options: [{label:'Below 8th',value:'Below 8th'},{label:'8th Pass',value:'8th Pass'},{label:'10th Pass',value:'10th Pass'},{label:'Graduate',value:'Graduate'}] },
+  { id: 'repaymentHistory', type: 'single_choice', label: 'Past Loan Repayment History', options: [{label:'Good',value:'Good'},{label:'Defaulted',value:'Defaulted'},{label:'No Past Loan',value:'No Past Loan'}] },
+  { id: 'previousTarunLoan', type: 'yes_no', label: 'Have you fully repaid a previous PMMY Tarun loan?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  
+  { id: 'dpiitRecognized', type: 'yes_no', label: 'Is your startup DPIIT Recognized?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'incorporationYears', type: 'numeric', label: 'Years since incorporation' },
+  { id: 'priorGovtSupportLimit', type: 'yes_no', label: 'Has prior Govt support exceeded permissible limit (₹10 Lakh)?', options: [{label:'Yes',value:'No'},{label:'No',value:'Yes'}] },
+  { id: 'businessIdeaFit', type: 'yes_no', label: 'Do you have a viable business idea for scale?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'technologyUsage', type: 'yes_no', label: 'Does your startup rely on technology in its core product/service?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'indianPromoterShareholding', type: 'yes_no', label: 'Is Indian promoter shareholding at least 51%?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'previousSeedSupportRestrictions', type: 'yes_no', label: 'Have you received seed fund before?', options: [{label:'Yes',value:'No'},{label:'No',value:'Yes'}] },
 
-function resolveValue(profile: any, field: string) {
-  if (profile[field] !== undefined && profile[field] !== null && profile[field] !== '') {
-    return profile[field];
-  }
-  if (profile.dynamicAnswers && profile.dynamicAnswers[field] !== undefined && profile.dynamicAnswers[field] !== null && profile.dynamicAnswers[field] !== '') {
-    return profile.dynamicAnswers[field];
-  }
+  { id: 'notInDefault', type: 'yes_no', label: 'Are you in default with any lender?', options: [{label:'Yes',value:'No'},{label:'No',value:'Yes'}] },
+  { id: 'notNpa', type: 'yes_no', label: 'Is your account classified as NPA?', options: [{label:'Yes',value:'No'},{label:'No',value:'Yes'}] },
+  { id: 'memberInstitutionEligibility', type: 'yes_no', label: 'Has the lender (Member Institution) approved eligibility?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'},{label:'Requires Assessment',value:'Requires Assessment'}] },
+  
+  { id: 'landholding', type: 'numeric', label: 'Landholding (in Hectares)' },
+  { id: 'farmerType', type: 'single_choice', label: 'Farmer Type', options: [{label:'Small/Marginal',value:'Small/Marginal'},{label:'Owner',value:'Owner'},{label:'Tenant',value:'Tenant'},{label:'Sharecropper',value:'Sharecropper'}] },
+  { id: 'agriActivity', type: 'single_choice', label: 'Agriculture Activity', options: [{label:'Cultivation',value:'Cultivation'},{label:'PostHarvest',value:'PostHarvest'}] },
+  { id: 'enterpriseType', type: 'single_choice', label: 'Enterprise Type', options: [{label:'Micro',value:'Micro'},{label:'FPO',value:'FPO'},{label:'SHG',value:'SHG'},{label:'Small',value:'Small'}] },
+  
+  { id: 'institutionalLandHolder', type: 'yes_no', label: 'Are you an institutional land holder?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'constitutionalPostHolder', type: 'yes_no', label: 'Do you hold a constitutional post?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'govtEmployee', type: 'yes_no', label: 'Are you a current or former Government employee?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'pensioner', type: 'yes_no', label: 'Is your pension >= ₹10,000?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'incomeTaxPayer', type: 'yes_no', label: 'Did you pay Income Tax in the last assessment year?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] },
+  { id: 'registeredProfessional', type: 'yes_no', label: 'Are you a registered Doctor, Engineer, Lawyer, etc.?', options: [{label:'Yes',value:'Yes'},{label:'No',value:'No'}] }
+];
+
+function resolveValue(profile, field) {
+  if (profile[field] !== undefined && profile[field] !== null && profile[field] !== '') return profile[field];
+  if (profile.dynamicAnswers && profile.dynamicAnswers[field] !== undefined && profile.dynamicAnswers[field] !== null && profile.dynamicAnswers[field] !== '') return profile.dynamicAnswers[field];
   return null;
 }
 
-function evaluateRules(schemeId: string, profile: any) {
+function evaluateRules(schemeId, profile) {
   const rules = SCHEME_RULES.filter(r => r.schemeId === schemeId);
-  const passed: any[] = [];
-  const failed: any[] = [];
-  const missing: any[] = [];
+  
+  // CONDITIONAL RULES INJECTION
+  if (schemeId === 'biz-pmegp') {
+    const pc = resolveValue(profile, 'projectCost');
+    const act = resolveValue(profile, 'businessActivity');
+    if (pc && act) {
+       if ((act === 'Manufacturing' && Number(pc) > 1000000) || (act === 'Service' && Number(pc) > 500000)) {
+           rules.push({ schemeId: 'biz-pmegp', field: 'educationLevel', operator: 'InList', value: '8th Pass,10th Pass,Graduate', provenance: 'USER_DECLARED' });
+       }
+    } else if (pc) {
+       rules.push({ schemeId: 'biz-pmegp', field: 'educationLevel', operator: 'InList', value: '8th Pass,10th Pass,Graduate', provenance: 'USER_DECLARED' }); // Optimistic require
+    }
+  }
+
+  // Tarun Plus conditional rule on PMMY
+  if (schemeId === 'biz-pmmy') {
+    const pc = resolveValue(profile, 'projectCost');
+    if (pc && Number(pc) > 1000000) {
+        rules.push({ schemeId: 'biz-pmmy', field: 'repaymentHistory', operator: 'Equals', value: 'Good', provenance: 'USER_DECLARED' });
+        rules.push({ schemeId: 'biz-pmmy', field: 'previousTarunLoan', operator: 'Equals', value: 'Yes', provenance: 'USER_DECLARED' });
+    }
+  }
+
+  const passed = [];
+  const failed = [];
+  const missing = [];
+  let requiresAssessment = false;
 
   for (const rule of rules) {
-    // Determine base age
-    let age = -1;
-    if (profile.dob) {
-      const dobDate = new Date(profile.dob);
-      if (!isNaN(dobDate.getTime())) {
-        const today = new Date();
-        age = today.getFullYear() - dobDate.getFullYear();
-        if (today.getMonth() < dobDate.getMonth() || (today.getMonth() === dobDate.getMonth() && today.getDate() < dobDate.getDate())) {
-          age--;
-        }
-      }
-    }
-
     let userValue = resolveValue(profile, rule.field);
-
-    if (rule.field === 'age' && age !== -1) {
-      userValue = age;
-    }
-
     if (userValue === null) {
       missing.push(rule.field);
       continue;
     }
+    
+    if (rule.provenance === 'EXTERNAL_AUTHORITY_ASSESSMENT' && userValue === 'Requires Assessment') {
+       requiresAssessment = true;
+       continue;
+    }
 
     let isPass = false;
-    let expectedCondition = rule.value;
-    let providedCondition = String(userValue);
-
-    if (rule.operator === 'Equals') {
-      isPass = String(userValue).toLowerCase() === String(rule.value).toLowerCase();
-    } else if (rule.operator === 'InList') {
-      const list = rule.value.split(',').map(s => s.trim().toLowerCase());
-      isPass = list.includes(String(userValue).toLowerCase());
-    } else if (rule.operator === 'Max') {
-      isPass = Number(userValue) <= Number(rule.value);
-      expectedCondition = `Max ${rule.value}`;
-    } else if (rule.operator === 'Min') {
-      isPass = Number(userValue) >= Number(rule.value);
-      expectedCondition = `Min ${rule.value}`;
-    } else if (rule.operator === 'Range') {
+    if (rule.operator === 'Equals') isPass = String(userValue).toLowerCase() === String(rule.value).toLowerCase();
+    else if (rule.operator === 'InList') isPass = rule.value.toLowerCase().split(',').includes(String(userValue).toLowerCase());
+    else if (rule.operator === 'Max') isPass = Number(userValue) <= Number(rule.value);
+    else if (rule.operator === 'Min') isPass = Number(userValue) >= Number(rule.value);
+    else if (rule.operator === 'Range') {
       const [min, max] = rule.value.split('-').map(Number);
       isPass = Number(userValue) >= min && Number(userValue) <= max;
-      expectedCondition = `Between ${min} and ${max}`;
-    } else if (rule.operator === 'Max_UP_PostMatric') {
-      const isSCST = (profile.category === 'SC' || profile.category === 'ST');
-      const limit = isSCST ? 250000 : 200000;
-      isPass = Number(userValue) <= limit;
-      expectedCondition = `Max ${limit} for ${profile.category}`;
     }
 
-    if (isPass) {
-      passed.push({ ruleName: rule.field, userValue: providedCondition, schemeCondition: expectedCondition, status: 'Matched' });
-    } else {
-      failed.push({ ruleName: rule.field, userValue: providedCondition, schemeCondition: expectedCondition, status: 'Failed' });
-    }
+    if (isPass) passed.push({ ruleName: rule.field, userValue: String(userValue), status: 'Matched', provenance: rule.provenance });
+    else failed.push({ ruleName: rule.field, userValue: String(userValue), status: 'Failed', provenance: rule.provenance });
   }
 
   let eligibilityState = 'Eligible';
-  if (failed.length > 0) {
-    eligibilityState = 'Not Eligible';
-  } else if (missing.length > 0) {
-    eligibilityState = 'More Information Needed';
-  }
+  if (failed.length > 0) eligibilityState = 'Not Eligible';
+  else if (missing.length > 0) eligibilityState = 'More Information Needed';
+  else if (requiresAssessment) eligibilityState = 'Requires Lender Assessment';
 
   return { eligibilityState, passed, failed, missing };
 }
 
+app.post("/api/schemes/dynamic-questions", (req, res) => {
+  const profile = req.body;
+  
+  // Filter out discontinued schemes from active flow
+  const activeSchemes = SCHEMES.filter(s => s.lifecycle !== 'DISCONTINUED' && s.lifecycle !== 'SUPERSEDED' && s.lifecycle !== 'HISTORICAL_ONLY' && (s.purpose === profile.purpose || (profile.purpose === 'Business' && s.purpose === 'Startup') || (profile.purpose === 'Startup' && s.purpose === 'Business')));
+  
+  if (activeSchemes.length === 0) return res.json([]);
 
-  app.get("/api/locations/districts", (req, res) => {
-    const state = req.query.state as string;
-    if (state === 'UP') {
-      res.json([
-        { code: 'AL', name: 'Aligarh' }, { code: 'AG', name: 'Agra' },
-        { code: 'LU', name: 'Lucknow' }, { code: 'KA', name: 'Kanpur Nagar' },
-        { code: 'VA', name: 'Varanasi' }, { code: 'ME', name: 'Meerut' }
-      ]);
-    } else if (state === 'MH') {
-      res.json([
-        { code: 'MU', name: 'Mumbai City' }, { code: 'MS', name: 'Mumbai Suburban' },
-        { code: 'PU', name: 'Pune' }, { code: 'NA', name: 'Nagpur' },
-        { code: 'TH', name: 'Thane' }, { code: 'NS', name: 'Nashik' }
-      ]);
-    } else if (state === 'DL') {
-      res.json([
-        { code: 'ND', name: 'New Delhi' }, { code: 'CD', name: 'Central Delhi' },
-        { code: 'SD', name: 'South Delhi' }, { code: 'ED', name: 'East Delhi' },
-        { code: 'WD', name: 'West Delhi' }
-      ]);
-    } else {
-      const stateName = STATES_MAP[state] || 'State';
-      res.json([
-        { code: `${state}-01`, name: `${stateName} District 1` },
-        { code: `${state}-02`, name: `${stateName} District 2` }
-      ]);
-    }
-  });
-
-  app.post("/api/schemes/dynamic-questions", (req, res) => {
-    const profile = req.body;
-    if (profile.purpose !== 'Education') {
-       // fallback mock for Business
-       return res.json([
-         { id: 'businessActivity', type: 'taxonomy', label: 'Select Business / Economic Activity' },
-         { id: 'projectCost', type: 'currency', label: 'Estimated Project Cost (₹)', helpText: 'Total amount needed for your business or project' }
-       ]);
-    }
-
-    const allMissing = new Set<string>();
-    
-    for (const scheme of SCHEMES.filter(s => s.purpose === 'Education')) {
-      const evalRes = evaluateRules(scheme.id, profile);
-      if (evalRes.eligibilityState !== 'Not Eligible') {
-        evalRes.missing.forEach(m => allMissing.add(m));
+  const missingCounts = new Map();
+  
+  for (const scheme of activeSchemes) {
+    const evalRes = evaluateRules(scheme.id, profile);
+    if (evalRes.eligibilityState !== 'Not Eligible') {
+      for (const m of evalRes.missing) {
+         missingCounts.set(m, (missingCounts.get(m) || 0) + 1);
       }
     }
+  }
 
-    const questions: any[] = [];
-    if (allMissing.has('educationLevel')) {
-      questions.push({
-        id: 'educationLevel', type: 'single_choice', label: 'Education Level',
-        options: [{label: 'Undergraduate', value: 'Undergraduate'}, {label: 'Postgraduate', value: 'Postgraduate'}, {label: 'Vocational', value: 'Vocational'}]
-      });
-    }
-    if (allMissing.has('course')) {
-      questions.push({ id: 'course', type: 'text', label: 'Course Name (e.g. B.Tech)' });
-    }
-    if (allMissing.has('institutionRecognition')) {
-      questions.push({
-        id: 'institutionRecognition', type: 'single_choice', label: 'Is your Institution officially Recognized?',
-        options: [{label: 'Yes, Recognized', value: 'Recognized'}, {label: 'No / Unrecognized', value: 'Unrecognized'}]
-      });
-    }
-    if (allMissing.has('institutionCategory')) {
-      questions.push({
-        id: 'institutionCategory', type: 'single_choice', label: 'Institution Category',
-        options: [{label: 'Top Class Notified', value: 'Top Class Notified'}, {label: 'Other', value: 'Other'}]
-      });
-    }
-    if (allMissing.has('class12Marks')) {
-      questions.push({ id: 'class12Marks', type: 'numeric', label: 'Class XII Marks / Percentile' });
-    }
-    if (allMissing.has('regularFullTime')) {
-      questions.push({
-        id: 'regularFullTime', type: 'yes_no', label: 'Is this a Regular / Full-Time course?',
-        options: [{label: 'Yes', value: 'Yes'}, {label: 'No', value: 'No'}]
-      });
-    }
-    if (allMissing.has('annualCourseFee')) {
-      questions.push({ id: 'annualCourseFee', type: 'currency', label: 'Annual Course Fee (₹)' });
-    }
-    if (allMissing.has('totalCourseCost')) {
-      questions.push({ id: 'totalCourseCost', type: 'currency', label: 'Total Course Cost (₹)' });
-    }
+  if (missingCounts.size === 0) return res.json([]);
 
-    res.json(questions);
-  });
-
-  app.post("/api/schemes/match", (req, res) => {
-    const profile = req.body;
-    const recommended: any[] = [];
-    const otherEligible: any[] = [];
-    const moreInfoNeeded: any[] = [];
-    const notEligible: any[] = [];
-
-    // Map through schemes
-    const activeSchemes = SCHEMES.filter(s => s.purpose === profile.purpose || profile.purpose === 'Education'); 
-    
-    // Default fallback if not Education for demo stability
-    if (profile.purpose !== 'Education') {
-        res.json({ recommended: [], otherEligible: [], moreInfoNeeded: [], notEligible: [] });
-        return;
+  let bestField = '';
+  let maxCount = -1;
+  for (const [field, count] of missingCounts.entries()) {
+    if (count > maxCount) {
+      maxCount = count;
+      bestField = field;
     }
+  }
 
-    for (const scheme of activeSchemes) {
-       const evalRes = evaluateRules(scheme.id, profile);
-       const source = GOVERNMENT_SOURCES.find(s => s.id === scheme.sourceId);
-       
-       const schemeData = {
-         ...scheme,
-         officialSource: source?.name || 'Government Source',
-         ruleComparisons: [...evalRes.passed, ...evalRes.failed, ...evalRes.missing.map((m: any) => ({ ruleName: m, status: 'Missing' }))],
-         missingRules: evalRes.missing
-       };
+  const qDef = QUESTIONS_DEF.find(q => q.id === bestField);
+  if (qDef) {
+    res.json([qDef]);
+  } else {
+    res.json([{ id: bestField, type: 'text', label: bestField }]);
+  }
+});
 
-       if (evalRes.eligibilityState === 'Not Eligible') {
-         notEligible.push(schemeData);
-       } else if (evalRes.eligibilityState === 'More Information Needed') {
-         moreInfoNeeded.push(schemeData);
-       } else {
-         recommended.push(schemeData);
-       }
-    }
+app.post("/api/schemes/match", (req, res) => {
+  const profile = req.body;
+  const recommended = [];
+  const otherEligible = [];
+  const moreInfoNeeded = [];
+  const notEligible = [];
 
-    res.json({
-      recommended,
-      otherEligible,
-      moreInfoNeeded,
-      notEligible
-    });
-  });
+  const activeSchemes = SCHEMES.filter(s => s.lifecycle !== 'DISCONTINUED' && s.lifecycle !== 'SUPERSEDED' && s.lifecycle !== 'HISTORICAL_ONLY' && (s.purpose === profile.purpose || (profile.purpose === 'Business' && s.purpose === 'Startup') || (profile.purpose === 'Startup' && s.purpose === 'Business')));
 
-  app.get("/api/download-zip", (req, res) => {
-    const zipPath = path.join(process.cwd(), 'ArthSetu-AIStudio-Complete.zip');
-    res.download(zipPath);
-  });
+  for (const scheme of activeSchemes) {
+     const evalRes = evaluateRules(scheme.id, profile);
+     const source = GOVERNMENT_SOURCES.find(s => s.id === scheme.sourceId);
+     
+     const schemeData = {
+       ...scheme,
+       officialSource: source?.name || 'Government Source',
+       ruleComparisons: [...evalRes.passed, ...evalRes.failed, ...evalRes.missing.map(m => ({ ruleName: m, status: 'Missing' }))],
+       missingRules: evalRes.missing
+     };
+
+     if (evalRes.eligibilityState === 'Not Eligible') notEligible.push(schemeData);
+     else if (evalRes.eligibilityState === 'More Information Needed') moreInfoNeeded.push(schemeData);
+     else recommended.push(schemeData);
+  }
+
+  res.json({ recommended, otherEligible, moreInfoNeeded, notEligible });
+});
 
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log("Server running on http://localhost:" + PORT);
   });
 }
 

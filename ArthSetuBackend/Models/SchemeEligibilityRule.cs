@@ -20,6 +20,15 @@ namespace ArthSetuBackend.Models
         public string? VerificationStatus { get; set; }
         public int EvaluationOrder { get; set; }
         
+        public string? ConditionField { get; set; }
+        public string? ConditionOperator { get; set; }
+        public string? ConditionValue { get; set; }
+        public string? EligibilitySourceType { get; set; }
+        public string? GovernmentSourceId { get; set; }
+        public DateTime? LastVerifiedAt { get; set; }
+        public string? OfficialSourceUrl { get; set; }
+        public int? SourceSnapshotId { get; set; }
+
         public Scheme? Scheme { get; set; }
     }
 }

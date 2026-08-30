@@ -66,3 +66,7 @@ replace_render.js
 # Internal tools (not application code)
 DbCleaner/
 DbUpdater/
+
+scratch/
+*.py
+

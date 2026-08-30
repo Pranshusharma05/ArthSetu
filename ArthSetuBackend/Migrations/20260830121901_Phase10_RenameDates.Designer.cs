@@ -4,6 +4,7 @@ using ArthSetuBackend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ArthSetuBackend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260830121901_Phase10_RenameDates")]
+    partial class Phase10_RenameDates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -397,20 +400,23 @@ namespace ArthSetuBackend.Migrations
                     b.Property<string>("ApplicableStateUT")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("ApplicationEndDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("ApplicationInstructions")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ApplicationMode")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("ApplicationOpenFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ApplicationOpenUntil")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ApplicationPortal")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("ApplicationStartDate")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("ApplicationWindowStatus")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BenefitType")
                         .HasColumnType("nvarchar(max)");
@@ -440,6 +446,9 @@ namespace ArthSetuBackend.Migrations
 
                     b.Property<DateTime?>("EffectiveUntil")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("FreshOrRenewal")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("GeographicApplicabilityType")
                         .HasColumnType("nvarchar(max)");
@@ -494,9 +503,6 @@ namespace ArthSetuBackend.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Purpose")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RulesetStatus")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SchemeCategory")
@@ -585,29 +591,6 @@ namespace ArthSetuBackend.Migrations
                     b.HasIndex("SchemeId");
 
                     b.ToTable("SchemeBenefitComponents", (string)null);
-                });
-
-            modelBuilder.Entity("ArthSetuBackend.Models.SchemeDiscoveryCategory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CategoryName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SchemeId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SchemeId");
-
-                    b.ToTable("SchemeDiscoveryCategories", (string)null);
                 });
 
             modelBuilder.Entity("ArthSetuBackend.Models.SchemeEligibilityRule", b =>
@@ -981,17 +964,6 @@ namespace ArthSetuBackend.Migrations
                     b.Navigation("Scheme");
                 });
 
-            modelBuilder.Entity("ArthSetuBackend.Models.SchemeDiscoveryCategory", b =>
-                {
-                    b.HasOne("ArthSetuBackend.Models.Scheme", "Scheme")
-                        .WithMany("DiscoveryCategories")
-                        .HasForeignKey("SchemeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Scheme");
-                });
-
             modelBuilder.Entity("ArthSetuBackend.Models.SchemeEligibilityRule", b =>
                 {
                     b.HasOne("ArthSetuBackend.Models.SchemeBenefitComponent", "SchemeBenefitComponent")
@@ -1040,8 +1012,6 @@ namespace ArthSetuBackend.Migrations
                     b.Navigation("ApplicationWindows");
 
                     b.Navigation("BenefitComponents");
-
-                    b.Navigation("DiscoveryCategories");
                 });
 #pragma warning restore 612, 618
         }

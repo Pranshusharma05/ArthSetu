@@ -26,6 +26,7 @@ namespace ArthSetuBackend.Data
         public DbSet<SchemeBenefitComponent> SchemeBenefitComponents { get; set; }
         public DbSet<DiscoveryCandidate> DiscoveryCandidates { get; set; }
         public DbSet<SchemeSourceReference> SchemeSourceReferences { get; set; }
+        public DbSet<SchemeDiscoveryCategory> SchemeDiscoveryCategories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -45,6 +46,7 @@ namespace ArthSetuBackend.Data
             modelBuilder.Entity<SchemeBenefitComponent>().ToTable("SchemeBenefitComponents");
             modelBuilder.Entity<DiscoveryCandidate>().ToTable("DiscoveryCandidates");
             modelBuilder.Entity<SchemeSourceReference>().ToTable("SchemeSourceReferences");
+            modelBuilder.Entity<SchemeDiscoveryCategory>().ToTable("SchemeDiscoveryCategories");
         }
     }
 }
